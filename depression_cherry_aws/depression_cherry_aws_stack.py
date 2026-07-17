@@ -1,19 +1,22 @@
 from aws_cdk import (
-    # Duration,
     Stack,
-    # aws_sqs as sqs,
+    Duration,
+    aws_lambda as _lambda,
+    aws_logs as logs
 )
 from constructs import Construct
 
 class DepressionCherryAwsStack(Stack):
 
-    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, env_name: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # The code that defines your stack goes here
-
-        # example resource
-        # queue = sqs.Queue(
-        #     self, "DepressionCherryAwsQueue",
-        #     visibility_timeout=Duration.seconds(300),
-        # )
+        _lambda.Function(
+            self, "Nasa",
+            function_name=f"Nasa-{env_name}",
+            runtime=_lambda.Runtime.PYTHON_3_13,
+            handler="nasa.lambda_handler",
+            code=_lambda.Code.from_asset("lambda"),
+            timeout=Duration.seconds(120),           # 2 min
+            log_retention=logs.RetentionDays.ONE_WEEK
+            )

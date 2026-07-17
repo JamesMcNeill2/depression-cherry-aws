@@ -8,7 +8,7 @@ app = cdk.App()
 env=cdk.Environment(account=os.getenv("CDK_DEFAULT_ACCOUNT"),
                     region=os.getenv("CDK_DEFAULT_REGION", "eu-west-2"))
 
-DepressionCherryAwsStack(app, "ProdStack", env=env)
-DepressionCherryAwsStack(app, "DevStack", env=env)
+DepressionCherryAwsStack(app, "ProdStack", env_name="Prod", env=env)
+DepressionCherryAwsStack(app, "DevStack", env_name="Dev", env=env)
 
 app.synth()
