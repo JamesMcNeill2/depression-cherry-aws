@@ -51,7 +51,7 @@ jobs:
         run: cdk diff DevStack
       
       - name: Deploy dev
-        if: github.ref == 'refs/head/dev'
+        if: github.ref == 'refs/heads/dev'
         run: cdk deploy DevStack --require-aproval never
 
       - name: Deploy prod
