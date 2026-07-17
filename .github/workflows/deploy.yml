@@ -1,0 +1,59 @@
+name: CDK Deploy
+
+on:
+  push:
+    branches: [main, dev, 'feature/**']
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@4
+      
+      - name: Setup Python
+        uses: actions/setup-python@5
+        with:
+          python-version: '3.15'
+          cache: 'pip'
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      
+      - name: Install CDK CLI
+        run: npm install -g aws-cdk
+      
+      - name: Install Python Dependancies
+        run: pip install -r requirements.txt
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@4
+        with:
+          role-to-assume: arn:aws:iam::815651768861:role/CdkDeployRole
+          aws-region: eu-west-2
+      
+      - name: Synth
+        run: cdk synth
+
+      - name: Diff (Feature Branches)
+        if: startsWith(github.ref, 'refs/heads/feature')
+        run: cdk diff DevStack
+      
+      - name: Deploy dev
+        if: github.ref == 'refs/head/dev'
+        run: cdk deploy DevStack --require-aproval never
+
+      - name: Deploy prod
+        if: github.ref == 'refs/heads/main'
+        run: cdk deploy ProdStack --require-aproval never
