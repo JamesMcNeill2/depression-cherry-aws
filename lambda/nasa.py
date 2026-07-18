@@ -7,5 +7,3 @@ def lambda_handler(event, context):
     url = "https://api.nasa.gov/planetary/apod"
     nasa_data = get_api_response(url).json()
     send_email(nasa_data, get_img(nasa_data))
-
-lambda_handler({}, {})

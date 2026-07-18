@@ -41,6 +41,13 @@ def get_params():
                 "email-from": os.environ["EMAIL_FROM"],
                 "email-to": os.environ["EMAIL_TO"]
             }
+    
+    missing = [name for name, value in _params.items() if not value]
+    if missing:
+        raise ValueError(f"Missing required env values: {', '.join(missing)}")
+    
+    logging.info("All parameters have been retrieved")
+    
     return _params
 
 def get_api_response(url, max_retries=5):
