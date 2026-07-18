@@ -36,6 +36,14 @@ jobs:
       
       - name: Install Python Dependancies
         run: pip install -r requirements.txt
+      
+      - name: Install Lambda Dependancies
+        run: |
+          pip install -r lambda/requirements.txt -t lambda/ \
+            --platform manylinux2014_x86_64 \
+            --python-version 3.13 \
+            --implementation cp \
+            --only-binary=:all:
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
