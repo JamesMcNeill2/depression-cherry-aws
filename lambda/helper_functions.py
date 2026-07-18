@@ -17,9 +17,11 @@ def configure_logging():
 _params = None
 
 def get_params():
+    logging.info("Getting parameters")
     global _params
     if _params is None:
         if os.environ.get("PARAM_PREFIX"):
+            logging.info("Getting parameters from SSM")
             ssm = boto3.client("ssm")
             response = ssm.get_parameters_by_path(
                 Path=os.environ["PARAM_PREFIX"],
@@ -30,9 +32,9 @@ def get_params():
                 for p in response["Parameters"]
             }
         else:
+            logging.info("Getting parameters from .env")
             from dotenv import load_dotenv
             load_dotenv()
-            print(os.getenv("EMAIL_FROM"))
             _params = {
                 "nasa-api-key": os.environ["NASA_API_KEY"],
                 "gmail-password": os.environ["GMAIL_PASSWORD"],
@@ -51,7 +53,6 @@ def get_api_response(url, max_retries=5):
     else:
         logging.error("API_KEY has not been retrieved")
         raise Exception("API_KEY has not been retrieved")
-
 
     for attempt in range(max_retries):
         logging.info(f"Running api request. Attempt: {attempt+1}")
