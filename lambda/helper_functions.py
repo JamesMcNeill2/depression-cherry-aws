@@ -43,10 +43,11 @@ def get_params():
 
 def get_api_response(url, max_retries=5):
     logging.info("Getting api key")
-    api_key = os.getenv("NASA_API_KEY")
-    if api_key is not None:
+    params = get_params()
+    nasa_api_key = params["nasa-api-key"]
+    if nasa_api_key is not None:
         logging.info("API_KEY has been retrieved")
-        params = {"api_key": api_key}
+        params = {"api_key": nasa_api_key}
     else:
         logging.error("API_KEY has not been retrieved")
         raise Exception("API_KEY has not been retrieved")
@@ -80,33 +81,20 @@ def get_img(data):
     logging.info("Image received")
     return img_response.content
 
-def get_env_values():
-    env_values = {
-        "EMAIL_FROM": os.getenv("EMAIL_FROM"),
-        "EMAIL_TO": os.getenv("EMAIL_TO"),
-        "EMAIL_PASSWORD": os.getenv("GMAIL_PASSWORD")
-    }
-    
-    missing = [name for name, value in env_values.items() if not value]
-    if missing:
-        raise ValueError(f"Missing required env values: {', '.join(missing)}")
-
-    logging.info("All email env values retrieved")
-    return env_values["EMAIL_FROM"], env_values["EMAIL_TO"], env_values["EMAIL_PASSWORD"]
-
 def send_email(data, img_bytes):
     title, date, explanation = data["title"], data["date"], data["explanation"]
     formatted_date = datetime.strptime(date, "%Y-%m-%d").strftime("%d %B %Y")
     cid = "nasa_image"
-    
-    email_from, email_to, password = get_env_values()
+
+    params = get_params()
+    gmail_password = params["gmail-password"]
+    email_from = params["email-from"]
+    email_to = params["email-to"]
     
     msg = EmailMessage()
     msg["Subject"] = f"{formatted_date}: {title}"
     msg["From"] = email_from
     msg["To"] = email_to
-    # msg.set_content(explanation)
-    # msg.add_attachment(img_bytes, maintype="image", subtype="jpeg", filename="nasa_img.jpg")
     
     html_body = f"""
       <html>
@@ -126,6 +114,6 @@ def send_email(data, img_bytes):
 
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
         logging.info("Sending email")
-        server.login(email_from, password)
+        server.login(email_from, gmail_password)
         server.send_message(msg)
         logging.info("Email sent")
