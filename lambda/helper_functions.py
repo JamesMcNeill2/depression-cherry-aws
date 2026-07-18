@@ -1,4 +1,5 @@
 import os
+import boto3
 import time
 import smtplib
 import logging
@@ -13,9 +14,36 @@ def configure_logging():
         handlers=[logging.StreamHandler()]
     )
 
+_params = None
+
+def get_params():
+    global _params
+    if _params is None:
+        if os.environ.get("PARAM_PREFIX"):
+            ssm = boto3.client("ssm")
+            response = ssm.get_parameters_by_path(
+                Path=os.environ["PARAM_PREFIX"],
+                WithDecryption=True
+            )
+            _params = {
+                p["Name"].split("/")[-1]: p["Value"]
+                for p in response["Parameters"]
+            }
+        else:
+            from dotenv import load_dotenv
+            load_dotenv()
+            print(os.getenv("EMAIL_FROM"))
+            _params = {
+                "nasa-api-key": os.environ["NASA_API_KEY"],
+                "gmail-password": os.environ["GMAIL_PASSWORD"],
+                "email-from": os.environ["EMAIL_FROM"],
+                "email-to": os.environ["EMAIL_TO"]
+            }
+    return _params
+
 def get_api_response(url, max_retries=5):
     logging.info("Getting api key")
-    api_key = os.getenv("API_KEY")
+    api_key = os.getenv("NASA_API_KEY")
     if api_key is not None:
         logging.info("API_KEY has been retrieved")
         params = {"api_key": api_key}
@@ -56,7 +84,7 @@ def get_env_values():
     env_values = {
         "EMAIL_FROM": os.getenv("EMAIL_FROM"),
         "EMAIL_TO": os.getenv("EMAIL_TO"),
-        "EMAIL_PASSWORD": os.getenv("EMAIL_PASSWORD")
+        "EMAIL_PASSWORD": os.getenv("GMAIL_PASSWORD")
     }
     
     missing = [name for name, value in env_values.items() if not value]
