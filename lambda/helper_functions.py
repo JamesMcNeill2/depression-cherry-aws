@@ -23,10 +23,10 @@ def get_params():
         if os.environ.get("PARAM_PREFIX"):
             logging.info("Getting parameters from SSM")
             ssm = boto3.client("ssm")
-            response = ssm.get_parameters_by_path(
-                Path=os.environ["PARAM_PREFIX"],
-                WithDecryption=True
-            )
+            prefix = os.environ["PARAM_PREFIX"]
+            names = [f"{prefix}/nasa-api-key", f"{prefix}/gmail-password",
+                    f"{prefix}/email-from", f"{prefix}/email-to"]
+            response = ssm.get_parameters(Names=names, WithDecryption=True)
             _params = {
                 p["Name"].split("/")[-1]: p["Value"]
                 for p in response["Parameters"]
