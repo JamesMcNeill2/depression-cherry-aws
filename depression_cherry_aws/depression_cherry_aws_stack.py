@@ -51,7 +51,7 @@ class DepressionCherryAwsStack(Stack):
 
         scheduler.CfnSchedule(
             self, "DailyTrigger",
-            schedule_expression="cron(5 17 * * ? *)",   # 7am
+            schedule_expression="cron(10 17 * * ? *)",   # 7am
             schedule_expression_timezone="Europe/London",
             flexible_time_window={"mode": "OFF"},
             target=scheduler.CfnSchedule.TargetProperty(
