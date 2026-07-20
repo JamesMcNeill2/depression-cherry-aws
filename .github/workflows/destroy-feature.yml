@@ -1,0 +1,43 @@
+name: CDK Destroy Feature Branch
+
+on:
+  delete
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  destroy:
+    if: github.event.ref_type == 'branch' && startsWith(github.event.ref, 'feature/')
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        ref: main
+      
+    - name: Set Branch Name
+      run: echo "BRANCH_NAME=${{ github.event.ref }}" >> "$GITHUB_ENV"
+    
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+        cache: 'pip'
+    
+    - name: Install CDK CLI
+      run: npm install -g aws-cdk
+    
+    - name: Install Python Dependancies
+      run: pip install -r requirements.txt
+    
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::815651768861:role/CdkDeployRole
+        aws-region: eu-west-2
+    
+    - name: Destroy
+      run: cdk destroy --all --force
