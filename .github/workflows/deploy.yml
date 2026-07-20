@@ -54,14 +54,14 @@ jobs:
       - name: Synth
         run: cdk synth
 
-      - name: Diff (Feature Branches)
-        if: startsWith(github.ref, 'refs/heads/feature')
-        run: cdk diff DevStack
+      - name: Deploy Feature Branch
+        if: github.ref == 'refs/heads/feature/*'
+        run: cdk deploy FBStack --require-approval never
       
-      - name: Deploy dev
+      - name: Deploy Dev
         if: github.ref == 'refs/heads/dev'
         run: cdk deploy DevStack --require-approval never
 
-      - name: Deploy prod
+      - name: Deploy Prod
         if: github.ref == 'refs/heads/main'
         run: cdk deploy ProdStack --require-approval never
