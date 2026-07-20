@@ -16,7 +16,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
       with:
-        ref: main
+        ref: dev
       
     - name: Set Branch Name
       run: echo "BRANCH_NAME=${{ github.event.ref }}" >> "$GITHUB_ENV"
