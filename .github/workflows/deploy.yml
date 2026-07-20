@@ -22,6 +22,11 @@ jobs:
 
       - name: Set Branch Name
         run: echo "BRANCH_NAME=${GITHUB_REF#refs/heads}" >> "GITHUB_ENV"
+
+      - name: Debug Branch Name
+        run: |
+          echo "GITHUB_REF is: $GITHUB_REF"
+          echo "BRANCH_NAME is: $BRANCH_NAME"
       
       - name: Setup Python
         uses: actions/setup-python@v5
