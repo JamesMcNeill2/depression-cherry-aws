@@ -4,7 +4,9 @@ from aws_cdk import (
     RemovalPolicy,
     aws_lambda as _lambda,
     aws_logs as logs,
-    aws_ssm as ssm
+    aws_ssm as ssm,
+    aws_iam as iam,
+    aws_scheduler as scheduler
 )
 from constructs import Construct
 
@@ -40,3 +42,20 @@ class DepressionCherryAwsStack(Stack):
                 self, f"Param{name.title().replace('-', '')}",
                 parameter_name=f"{prefix}/{name}"
             ).grant_read(fn)
+
+        scheduler_role = iam.role(
+            self, "SchedulerInvokeRole",
+            assumed_by=iam.ServicePrincipal("sceduler.amazonaws.com")
+        )
+        fn.grant_invoke(scheduler_role)
+
+        scheduler.CfnSchedule(
+            self, "DailyTrigger",
+            scheduler_expression="cron(5 17 * * ? *)",   # 7am
+            schedule_expression_timezone="Europe/London",
+            flexible_time_window={"mode": "OFF"},
+            target=scheduler.CfnSchedule.TargetProperty(
+                arn=fn.function_arn,
+                role_arn=scheduler_role.role_arn
+            )
+        )
