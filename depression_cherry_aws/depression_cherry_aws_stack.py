@@ -43,19 +43,20 @@ class DepressionCherryAwsStack(Stack):
                 parameter_name=f"{prefix}/{name}"
             ).grant_read(fn)
 
-        scheduler_role = iam.Role(
-            self, "SchedulerInvokeRole",
-            assumed_by=iam.ServicePrincipal("scheduler.amazonaws.com")
-        )
-        fn.grant_invoke(scheduler_role)
-
-        scheduler.CfnSchedule(
-            self, "DailyTrigger",
-            schedule_expression="cron(0 7 * * ? *)",   # 7am
-            schedule_expression_timezone="Europe/London",
-            flexible_time_window={"mode": "OFF"},
-            target=scheduler.CfnSchedule.TargetProperty(
-                arn=fn.function_arn,
-                role_arn=scheduler_role.role_arn
+        if env_suffix == "prod":
+            scheduler_role = iam.Role(
+                self, "SchedulerInvokeRole",
+                assumed_by=iam.ServicePrincipal("scheduler.amazonaws.com")
             )
-        )
+            fn.grant_invoke(scheduler_role)
+
+            scheduler.CfnSchedule(
+                self, "DailyTrigger",
+                schedule_expression="cron(0 7 * * ? *)",   # 7am
+                schedule_expression_timezone="Europe/London",
+                flexible_time_window={"mode": "OFF"},
+                target=scheduler.CfnSchedule.TargetProperty(
+                    arn=fn.function_arn,
+                    role_arn=scheduler_role.role_arn
+                )
+            )
