@@ -10,10 +10,8 @@ from constructs import Construct
 
 class DepressionCherryAwsStack(Stack):
 
-    def __init__(self, scope: Construct, construct_id: str, env_name: str, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, env_name: str, env_suffix: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
-
-        prefix = f"/depression-cherry/{env_name.lower()}"
 
         log_group = logs.LogGroup(
             self, "NasaLogGroup",
@@ -21,9 +19,11 @@ class DepressionCherryAwsStack(Stack):
             removal_policy=RemovalPolicy.DESTROY,
         )
 
+        prefix = f"/depression-cherry/shared"
+
         fn = _lambda.Function(
             self, "Nasa",
-            function_name=f"Nasa-{env_name}",
+            function_name=f"Nasa-{env_suffix}",
             runtime=_lambda.Runtime.PYTHON_3_13,
             handler="nasa.lambda_handler",
             code=_lambda.Code.from_asset("lambda"),
