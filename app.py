@@ -23,6 +23,7 @@ def get_env_suffix(branch: str) -> str:
     return suffix[:40]
 
 branch_name = os.getenv("BRANCH_NAME", "dev")
+print(branch_name)
 env_suffix = get_env_suffix(branch_name)
 
 env_name = env_suffix.replace("-", " ").title().replace(" ", "")
