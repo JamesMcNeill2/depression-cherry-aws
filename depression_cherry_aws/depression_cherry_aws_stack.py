@@ -38,5 +38,5 @@ class DepressionCherryAwsStack(Stack):
         for name in ["nasa-api-key", "gmail-password", "email-from", "email-to"]:
             ssm.StringParameter.from_secure_string_parameter_attributes(
                 self, f"Param{name.title().replace('-', '')}",
-                parameter_name=f"/{prefix}/{name}"
+                parameter_name=f"{prefix}/{name}"
             ).grant_read(fn)
