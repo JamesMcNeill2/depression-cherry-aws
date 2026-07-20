@@ -45,7 +45,7 @@ class DepressionCherryAwsStack(Stack):
 
         scheduler_role = iam.Role(
             self, "SchedulerInvokeRole",
-            assumed_by=iam.ServicePrincipal("sceduler.amazonaws.com")
+            assumed_by=iam.ServicePrincipal("scheduler.amazonaws.com")
         )
         fn.grant_invoke(scheduler_role)
 
