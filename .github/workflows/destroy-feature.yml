@@ -16,7 +16,12 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
       with:
-        ref: dev
+        ref: main
+    
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
       
     - name: Set Branch Name
       run: echo "BRANCH_NAME=${{ github.event.ref }}" >> "$GITHUB_ENV"
