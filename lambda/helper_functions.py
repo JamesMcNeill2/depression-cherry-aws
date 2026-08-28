@@ -6,7 +6,6 @@ import logging
 from datetime import datetime
 from email.message import EmailMessage
 import requests
-from dotenv import load_dotenv
 from functools import lru_cache
 
 """Utility helpers for the NASA image email workflow.
@@ -63,6 +62,7 @@ def get_params():
     else:
         logging.info("Getting parameters from .env")
         # Queries anc caches .env for parameters
+        from dotenv import load_dotenv
         load_dotenv()
         params = {
             "nasa-api-key": os.environ["NASA_API_KEY"],
