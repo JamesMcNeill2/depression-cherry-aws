@@ -9,6 +9,7 @@ def lambda_handler(event, context):
     url = "https://api.nasa.gov/planetary/apod"
 
     # Fetches today's NASA APOD data
+    # APOD = Astronomy Picture of the Day
     nasa_data = get_api_response(url).json()
 
     # Emails the title, photo and description
