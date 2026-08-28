@@ -81,27 +81,18 @@ def get_params():
     
     return params
 
-def get_api_response(url, max_retries=5):
+def get_api_response(url, api_key, max_retries=5):
     """Fetch a NASA API resource, retrying transient HTTP failures.
 
     Args:
         url: NASA API endpoint to request.
+        api_key: NASA API key.
         max_retries: Maximum number of request attempts.
 
     Returns:
         requests.Response: The successful API response.
     """
-    logging.info("Getting api key")
-    params = get_params()
-    nasa_api_key = params["nasa-api-key"]
-
-    # Checks the NASA API Key has been returned
-    if nasa_api_key is not None:
-        logging.info("API_KEY has been retrieved")
-        params = {"api_key": nasa_api_key}
-    else:
-        logging.error("API_KEY has not been retrieved")
-        raise Exception("API_KEY has not been retrieved")
+    params = {"api_key": api_key, "thumbs": "true"}
 
     # Query the NASA API for up to max_retries amount of times
     for attempt in range(max_retries):
