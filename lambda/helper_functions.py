@@ -7,22 +7,37 @@ from datetime import datetime
 from email.message import EmailMessage
 import requests
 from dotenv import load_dotenv
+from functools import lru_cache
 
-"""Utilities for configuration, NASA API requests, image retrieval, and email delivery."""
+"""Utility helpers for the NASA image email workflow.
+
+This module centralizes configuration lookup, NASA API access, image download,
+and Gmail SMTP delivery. When running in AWS, values are loaded from AWS SSM
+using the `PARAM_PREFIX` environment variable; otherwise the local `.env` file is
+used.
+
+Expected configuration keys:
+- `NASA_API_KEY`
+- `GMAIL_PASSWORD`
+- `EMAIL_FROM`
+- `EMAIL_TO`
+
+When deployed to AWS, the same values are expected under the `PARAM_PREFIX`
+namespace with names such as `{prefix}/nasa-api-key`.
+"""
 
 def configure_logging():
-    """Configure application-wide logging at INFO level."""
+    """Configure the root logger to emit INFO-level console output."""
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
         handlers=[logging.StreamHandler()]
     )
 
-# Cache loaded configuration parameters so they are retrieved only once
-_params = None
-
+@lru_cache(maxsize=1)
 def get_params():
     """Load and cache required parameters from SSM or the local environment.
+    The result is cached for the lifetime of the process.
 
     Returns:
         dict: NASA API and email configuration values.
@@ -31,42 +46,40 @@ def get_params():
         ValueError: If a required parameter is missing.
     """
     logging.info("Getting parameters")
-    global _params
-    if _params is None:
-        # Checks current environment
-        if os.environ.get("PARAM_PREFIX"):
-            logging.info("Getting parameters from SSM")
-            ssm = boto3.client("ssm")
-            # Queries AWS Parameter Store for parameters
-            prefix = os.environ["PARAM_PREFIX"]
-            names = [f"{prefix}/nasa-api-key", f"{prefix}/gmail-password",
-                    f"{prefix}/email-from", f"{prefix}/email-to"]
-            response = ssm.get_parameters(Names=names, WithDecryption=True)
-            # Caches returned parameters
-            _params = {
-                p["Name"].split("/")[-1]: p["Value"]
-                for p in response["Parameters"]
-            }
-        else:
-            logging.info("Getting parameters from .env")
-            # Queries anc caches .env for parameters
-            load_dotenv()
-            _params = {
-                "nasa-api-key": os.environ["NASA_API_KEY"],
-                "gmail-password": os.environ["GMAIL_PASSWORD"],
-                "email-from": os.environ["EMAIL_FROM"],
-                "email-to": os.environ["EMAIL_TO"]
-            }
+
+    if os.environ.get("PARAM_PREFIX"):
+        logging.info("Getting parameters from SSM")
+        ssm = boto3.client("ssm")
+        # Queries AWS Parameter Store for parameters
+        prefix = os.environ["PARAM_PREFIX"]
+        names = [f"{prefix}/nasa-api-key", f"{prefix}/gmail-password",
+                f"{prefix}/email-from", f"{prefix}/email-to"]
+        response = ssm.get_parameters(Names=names, WithDecryption=True)
+        # Caches returned parameters
+        params = {
+            p["Name"].split("/")[-1]: p["Value"]
+            for p in response["Parameters"]
+        }
+    else:
+        logging.info("Getting parameters from .env")
+        # Queries anc caches .env for parameters
+        load_dotenv()
+        params = {
+            "nasa-api-key": os.environ["NASA_API_KEY"],
+            "gmail-password": os.environ["GMAIL_PASSWORD"],
+            "email-from": os.environ["EMAIL_FROM"],
+            "email-to": os.environ["EMAIL_TO"]
+        }
 
     # Checks for missing parameters
     # Raises an error iif one or more are
-    missing = [name for name, value in _params.items() if not value]
+    missing = [name for name, value in params.items() if not value]
     if missing:
         raise ValueError(f"Missing required env values: {', '.join(missing)}")
     
     logging.info("All parameters have been retrieved")
     
-    return _params
+    return params
 
 def get_api_response(url, max_retries=5):
     """Fetch a NASA API resource, retrying transient HTTP failures.
@@ -129,12 +142,15 @@ def get_img(data):
     logging.info("Image received")
     return img_response.content
 
-def send_email(data, img_bytes):
+def send_email(data, img_bytes, params):
     """Send a NASA image and explanation through Gmail SMTP.
 
     Args:
-        data: Response data containing ``title``, ``date``, and ``explanation``.
-        img_bytes: Image bytes to embed in the HTML message.
+        data: Dictionary with NASA image metadata, including ``title``, ``date``,
+            and ``explanation``.
+        img_bytes: Raw image bytes to embed inline in the email HTML body.
+        params: Configuration dictionary containing Gmail and recipient values,
+            including ``gmail-password``, ``email-from``, and ``email-to``.
     """
     # Extract and format the data
     title, date, explanation = data["title"], data["date"], data["explanation"]
@@ -144,7 +160,6 @@ def send_email(data, img_bytes):
     cid = "nasa_image"
 
     # Retrieve the email parameters
-    params = get_params()
     gmail_password = params["gmail-password"]
     email_from = params["email-from"]
     email_to = params["email-to"]
