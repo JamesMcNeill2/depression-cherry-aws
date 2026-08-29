@@ -122,7 +122,28 @@ def get_api_response(url, api_key, max_retries=5):
     error_msg = f"Unable to access api after max retries: {max_retries}"
     raise_error(Exception, error_msg)
 
-def get_img(data):
+def get_img_url(nasa_data):
+    """Extract the image URL from NASA API response data.
+
+    Args:
+        nasa_data: Dictionary containing NASA API response with ``media_type``
+            and either ``url`` (for images) or ``thumbnail_url`` (for videos).
+
+    Returns:
+        str | None: The image or thumbnail URL if available, otherwise None.
+    """
+    # If the media_type is image, return the image's source url
+    media_type = nasa_data.get("media_type")
+    if media_type == "image":
+        return nasa_data.get("url")
+
+    # If the media_type is video, return thumbnail image's url
+    if media_type == "video":
+        return nasa_data("thumbnail_url")
+
+    # If the media_type is other, return None
+    return None
+
     """Download the image identified by a NASA API response.
 
     Args:
