@@ -15,3 +15,6 @@ def lambda_handler(event, context):
 
     # Emails the title, photo and description
     send_email(nasa_data, get_img(nasa_data), params)
+
+if __name__ =="__main__":
+    lambda_handler({},{})
