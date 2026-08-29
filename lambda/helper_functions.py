@@ -1,4 +1,3 @@
-import os
 import boto3
 import time
 import smtplib
@@ -35,47 +34,40 @@ def configure_logging():
 
 @lru_cache(maxsize=1)
 def get_params():
-    """Load and cache required parameters from SSM or the local environment.
-    The result is cached for the lifetime of the process.
+    """Retrieve and cache AWS SSM parameters for NASA API and email configuration.
+
+    Fetches configuration values from AWS Parameter Store and caches the result
+    for the lifetime of the process to minimize API calls.
 
     Returns:
-        dict: NASA API and email configuration values.
+        dict: Configuration dictionary with keys: nasa-api-key, gmail-password,
+            email-from, email-to.
 
     Raises:
-        ValueError: If a required parameter is missing.
+        ValueError: If any required SSM parameter is missing or inaccessible.
     """
     logging.info("Getting parameters")
 
-    if os.environ.get("PARAM_PREFIX"):
-        logging.info("Getting parameters from SSM")
-        ssm = boto3.client("ssm")
-        # Queries AWS Parameter Store for parameters
-        prefix = os.environ["PARAM_PREFIX"]
-        names = [f"{prefix}/nasa-api-key", f"{prefix}/gmail-password",
-                f"{prefix}/email-from", f"{prefix}/email-to"]
-        response = ssm.get_parameters(Names=names, WithDecryption=True)
-        # Caches returned parameters
-        params = {
-            p["Name"].split("/")[-1]: p["Value"]
-            for p in response["Parameters"]
-        }
-    else:
-        logging.info("Getting parameters from .env")
-        # Queries anc caches .env for parameters
-        from dotenv import load_dotenv
-        load_dotenv()
-        params = {
-            "nasa-api-key": os.environ["NASA_API_KEY"],
-            "gmail-password": os.environ["GMAIL_PASSWORD"],
-            "email-from": os.environ["EMAIL_FROM"],
-            "email-to": os.environ["EMAIL_TO"]
-        }
+    logging.info("Getting parameters from SSM")
+    ssm = boto3.client("ssm")
+    # Queries AWS Parameter Store for parameters
+    param_names = ("nasa-api-key", "gmail-password", "email-from", "email-to")
+    response = ssm.get_parameters(
+        Names=[f"/depression-cherry/shared/{name}" for name in param_names],
+        WithDecryption=True
+    )
 
-    # Checks for missing parameters
-    # Raises an error iif one or more are
-    missing = [name for name, value in params.items() if not value]
-    if missing:
-        raise ValueError(f"Missing required env values: {', '.join(missing)}")
+    # Throw an error if one of the parameters hasn't been returned
+    if response["InvalidParameters"]:
+        raise ValueError(
+            f"Missing SSM Parameters: {', '.join(response['InvalidParameters'])}"
+        )
+
+    # Put the parameters into a variable
+    params = {
+        p["Name"].split("/")[-1]: p["Value"]
+        for p in response["Parameters"]
+    }
     
     logging.info("All parameters have been retrieved")
     
