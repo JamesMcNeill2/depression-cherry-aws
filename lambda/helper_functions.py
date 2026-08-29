@@ -214,51 +214,69 @@ def send_email(nasa_data, img_bytes, subtype, params):
     """Send a NASA image and explanation through Gmail SMTP.
 
     Args:
-        data: Dictionary with NASA image metadata, including ``title``, ``date``,
+        nasa_data: Dictionary with NASA image metadata, including ``title``, ``date``,
             and ``explanation``.
         img_bytes: Raw image bytes to embed inline in the email HTML body.
+        subtype: Image subtype (e.g., 'png', 'jpg').
         params: Configuration dictionary containing Gmail and recipient values,
             including ``gmail-password``, ``email-from``, and ``email-to``.
     """
-    # Extract and format the data
-    title, date, explanation = data["title"], data["date"], data["explanation"]
-    formatted_date = datetime.strptime(date, "%Y-%m-%d").strftime("%d %B %Y")
+    # Extract and format info from nasa_data
+    title, explanation, source_url = nasa_data["title"], nasa_data["explanation"], nasa_data["url"]
+    formatted_date = datetime.strptime(nasa_data["date"], "%Y-%m-%d").strftime("%d %B %Y")
+    is_video = nasa_data.get("media_type") == "video"
+
+    # Drop oversized images rather than failing at the SMTP layer
+    max_attachment_bytes = 18 * 1024 * 1024
+    if img_bytes and len(img_bytes) > max_attachment_bytes:
+        logging.warning("Image too large to attach (%d bytes), linking instead", len(img_bytes))
+        img_bytes, subtype = None, None
 
     # CID = Content ID
     cid = "nasa_image"
+    safe_url = html.escape(source_url, quote=True)
 
-    # Retrieve the email parameters
-    gmail_password = params["gmail-password"]
-    email_from = params["email-from"]
-    email_to = params["email-to"]
+    # If a usable image is available, embed it inline in the email using a CID so the
+    # HTML can render it without attaching a separate file; otherwise, fall back to a
+    # direct link for videos or the original NASA page.
+    if img_bytes and subtype:
+        media_html = f'<img src="cid:{cid}" style="max-width:100%; height:auto;">'
+        if is_video:
+            media_html += f'<p><a href="{safe_url}">Watch the video</a></p>'
+    else:
+        label = "Watch the video" if is_video else "View on NASA"
+        media_html = f'<p><a href="{safe_url}">{label}</a></p>'
 
     # Define and format the data needed for the email
     msg = EmailMessage()
     msg["Subject"] = f"{formatted_date}: {title}"
-    msg["From"] = email_from
-    msg["To"] = email_to
+    msg["From"] = params["email-from"]
+    msg["To"] = params["email-to"]
+
+    # Plain-text part first, for clients that won't render HTML
+    msg.set_content(f"{title}\n\n{source_url}\n\nExplanation\n\n{explanation}")
 
     # Define the HTML body of the email
     html_body = f"""
       <html>
         <body>
-        <h2>{title}</h2>
-        <img src="cid:{cid}" style="max-width:100%; height:auto;">
-        <h2>Explanation</h2>
-        <p>{explanation}</p>
-      </body>
-    </html>
+          <h2>{html.escape(title)}</h2>
+          <img src="cid:{cid}" style="max-width:100%; height:auto;">
+          <h2>Explanation</h2>
+          <p>{html.escape(explanation)}</p>
+        </body>
+      </html>
     """
+    msg.add_alternative(html_body, subtype="html")
     
     # Add the HTML body and attach the image inline using its CID
-    msg.add_alternative(html_body, subtype="html")
-    html_part = msg.get_payload()[-1]
-    html_part.add_related(img_bytes, maintype="image", subtype="jpeg", cid=f"<{cid}>")
-
+    if img_bytes and subtype:
+        html_part = msg.get_payload()[-1]
+        html_part.add_related(img_bytes, maintype="image", subtype="jpeg", cid=f"<{cid}>")
 
     # Connect securely to Gmail, authenticate, and send the email
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
         logging.info("Sending email")
-        server.login(email_from, gmail_password)
+        server.login(params["email-from"], params["gmail-password"])
         server.send_message(msg)
         logging.info("Email sent")
