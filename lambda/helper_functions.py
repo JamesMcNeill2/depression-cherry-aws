@@ -196,13 +196,21 @@ def get_img(url):
         bytes: Downloaded image content.
     """
     logging.info("Getting image")
-    url = data["url"]
-    img_response = requests.get(url)
+    img_response = requests.get(url, timeout=30)
     img_response.raise_for_status()
-    logging.info("Image received")
-    return img_response.content
 
-def send_email(data, img_bytes, params):
+    # Verify the payload is a supported image type before attempting to embed it.
+    # Some NASA responses may be HTML, JSON, or a non-image binary payload even
+    # when the URL resolves successfully, so we reject anything we can't identify.
+    subtype = detect_subtype(img_response.content, img_response.headers.get("Content-Type", ""))
+    if subtype is None:
+        logging.warning(f"Unrecognised image type at {url}")
+        return None, None
+
+    logging.info("Image received (%s, %d bytes)", subtype, len(img_response.content))
+    return img_response.content, subtype
+
+def send_email(nasa_data, img_bytes, subtype, params):
     """Send a NASA image and explanation through Gmail SMTP.
 
     Args:
