@@ -1,5 +1,6 @@
 import boto3
 import time
+import html
 import smtplib
 import logging
 from datetime import datetime
@@ -111,7 +112,8 @@ def get_api_response(url, api_key, max_retries=5):
             logging.info(f"{status_code} error: Retrying in {wait}s. Attempt {attempt+1}/{max_retries}")
             time.sleep(wait)
             continue
-        
+
+        # If response has been provided, return it
         response.raise_for_status()
         logging.info(f"Status Code: {response.status_code}")
         return response
@@ -120,7 +122,71 @@ def get_api_response(url, api_key, max_retries=5):
     error_msg = f"Unable to access api after max retries: {max_retries}"
     raise_error(Exception, error_msg)
 
-def get_img(data):
+def get_img_url(nasa_data):
+    """Extract the image URL from NASA API response data.
+
+    Args:
+        nasa_data: Dictionary containing NASA API response with ``media_type``
+            and either ``url`` (for images) or ``thumbnail_url`` (for videos).
+
+    Returns:
+        str | None: The image or thumbnail URL if available, otherwise None.
+    """
+    # If the media_type is image, return the image's source url
+    media_type = nasa_data.get("media_type")
+    if media_type == "image":
+        return nasa_data.get("url")
+
+    # If the media_type is video, return thumbnail image's url
+    if media_type == "video":
+        return nasa_data("thumbnail_url")
+
+    # If the media_type is other, return None
+    return None
+
+def detect_subtype(content, content_type):
+    """Determine the image subtype from the HTTP content type or file signature.
+
+    Args:
+        content: Raw image bytes to inspect when the content type is missing or
+            ambiguous.
+        content_type: HTTP content-type header value, such as ``image/jpeg``.
+
+    Returns:
+        str | None: The normalized subtype name (for example ``jpeg``, ``png``,
+        or ``gif``) when it can be identified, otherwise ``None``.
+    """
+    logging.info("Determining content type")
+
+    # Format content_type
+    # Eg. image/jpeg -> maintype = image, subtype = jpeg
+    maintype, _, subtype = content_type.partition("/")
+    subtype = subtype.split(";")[0].strip().lower()
+
+    # Return the subtype if it is jpeg, png or gif
+    if maintype == "image" and subtype in {"jpeg", "png", "gif"}:
+        logging.info(f"Determined content type: {subtype}")
+        return subtype
+
+    # Defines the bytes each type of file starts with
+    magic = (
+        (b"\xff\xd8\xff", "jpeg"),
+        (b"\x89PNG\r\n\x1a\n", "png"),
+        (b"GIF87a", "gif"),
+        (b"GIF89a", "gif")
+    )
+
+    # Backup for missing content_type
+    # Uses the starting bytes for each file to define file type
+    for signature, name in magic:
+        if content.startswith(signature):
+            logging.info(f"Determined content type: {name}")
+            return name
+
+    logging.info(f"Determined content type: None")
+    return None
+
+def get_img(url):
     """Download the image identified by a NASA API response.
 
     Args:
@@ -130,61 +196,87 @@ def get_img(data):
         bytes: Downloaded image content.
     """
     logging.info("Getting image")
-    url = data["url"]
-    img_response = requests.get(url)
+    img_response = requests.get(url, timeout=30)
     img_response.raise_for_status()
-    logging.info("Image received")
-    return img_response.content
 
-def send_email(data, img_bytes, params):
+    # Verify the payload is a supported image type before attempting to embed it.
+    # Some NASA responses may be HTML, JSON, or a non-image binary payload even
+    # when the URL resolves successfully, so we reject anything we can't identify.
+    subtype = detect_subtype(img_response.content, img_response.headers.get("Content-Type", ""))
+    if subtype is None:
+        logging.warning(f"Unrecognised image type at {url}")
+        return None, None
+
+    logging.info("Image received (%s, %d bytes)", subtype, len(img_response.content))
+    return img_response.content, subtype
+
+def send_email(nasa_data, img_bytes, subtype, params):
     """Send a NASA image and explanation through Gmail SMTP.
 
     Args:
-        data: Dictionary with NASA image metadata, including ``title``, ``date``,
+        nasa_data: Dictionary with NASA image metadata, including ``title``, ``date``,
             and ``explanation``.
         img_bytes: Raw image bytes to embed inline in the email HTML body.
+        subtype: Image subtype (e.g., 'png', 'jpeg').
         params: Configuration dictionary containing Gmail and recipient values,
             including ``gmail-password``, ``email-from``, and ``email-to``.
     """
-    # Extract and format the data
-    title, date, explanation = data["title"], data["date"], data["explanation"]
-    formatted_date = datetime.strptime(date, "%Y-%m-%d").strftime("%d %B %Y")
+    # Extract and format info from nasa_data
+    title, explanation, source_url = nasa_data["title"], nasa_data["explanation"], nasa_data["url"]
+    formatted_date = datetime.strptime(nasa_data["date"], "%Y-%m-%d").strftime("%d %B %Y")
+    is_video = nasa_data.get("media_type") == "video"
+
+    # Drop oversized images rather than failing at the SMTP layer
+    max_attachment_bytes = 18 * 1024 * 1024
+    if img_bytes and len(img_bytes) > max_attachment_bytes:
+        logging.warning("Image too large to attach (%d bytes), linking instead", len(img_bytes))
+        img_bytes, subtype = None, None
 
     # CID = Content ID
     cid = "nasa_image"
+    safe_url = html.escape(source_url, quote=True)
 
-    # Retrieve the email parameters
-    gmail_password = params["gmail-password"]
-    email_from = params["email-from"]
-    email_to = params["email-to"]
+    # If a usable image is available, embed it inline in the email using a CID so the
+    # HTML can render it without attaching a separate file; otherwise, fall back to a
+    # direct link for videos or the original NASA page.
+    if img_bytes and subtype:
+        media_html = f'<img src="cid:{cid}" style="max-width:100%; height:auto;">'
+        if is_video:
+            media_html += f'<p><a href="{safe_url}">Watch the video</a></p>'
+    else:
+        label = "Watch the video" if is_video else "View on NASA"
+        media_html = f'<p><a href="{safe_url}">{label}</a></p>'
 
     # Define and format the data needed for the email
     msg = EmailMessage()
     msg["Subject"] = f"{formatted_date}: {title}"
-    msg["From"] = email_from
-    msg["To"] = email_to
+    msg["From"] = params["email-from"]
+    msg["To"] = params["email-to"]
+
+    # Plain-text part first, for clients that won't render HTML
+    msg.set_content(f"{title}\n\n{source_url}\n\nExplanation\n\n{explanation}")
 
     # Define the HTML body of the email
     html_body = f"""
       <html>
         <body>
-        <h2>{title}</h2>
-        <img src="cid:{cid}" style="max-width:100%; height:auto;">
-        <h2>Explanation</h2>
-        <p>{explanation}</p>
-      </body>
-    </html>
+          <h2>{html.escape(title)}</h2>
+          {media_html}
+          <h2>Explanation</h2>
+          <p>{html.escape(explanation)}</p>
+        </body>
+      </html>
     """
+    msg.add_alternative(html_body, subtype="html")
     
     # Add the HTML body and attach the image inline using its CID
-    msg.add_alternative(html_body, subtype="html")
-    html_part = msg.get_payload()[-1]
-    html_part.add_related(img_bytes, maintype="image", subtype="jpeg", cid=f"<{cid}>")
-
+    if img_bytes and subtype:
+        html_part = msg.get_payload()[-1]
+        html_part.add_related(img_bytes, maintype="image", subtype=subtype, cid=f"<{cid}>")
 
     # Connect securely to Gmail, authenticate, and send the email
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as server:
         logging.info("Sending email")
-        server.login(email_from, gmail_password)
+        server.login(params["email-from"], params["gmail-password"])
         server.send_message(msg)
         logging.info("Email sent")

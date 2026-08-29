@@ -1,20 +1,28 @@
-from helper_functions import configure_logging, get_params, get_api_response, get_img, send_email
+from helper_functions import configure_logging, get_params, get_api_response, get_img_url, get_img, send_email
+
+# Defines the Nasa API URL  
+URL = "https://api.nasa.gov/planetary/apod"
 
 def lambda_handler(event, context):
 
-    # Sets up the logger
+    # Sets up the logger and defines parameters
     configure_logging()
     params = get_params()
 
-    # Defines the Nasa API URL
-    url = "https://api.nasa.gov/planetary/apod"
-
     # Fetches today's NASA APOD data
     # APOD = Astronomy Picture of the Day
-    nasa_data = get_api_response(url, params["nasa-api-key"]).json()
+    nasa_data = get_api_response(URL, params["nasa-api-key"]).json()
+
+    img_url = get_img_url(nasa_data)
+    if img_url:
+        img_bytes, subtype = get_img(img_url)
+    else:
+        img_bytes, subtype = None, None
 
     # Emails the title, photo and description
-    send_email(nasa_data, get_img(nasa_data), params)
+    send_email(nasa_data, img_bytes, subtype, params)
+
+    return {"status": "sent", "date": nasa_data["date"]}
 
 if __name__ =="__main__":
     lambda_handler({},{})
