@@ -32,6 +32,19 @@ def configure_logging():
         handlers=[logging.StreamHandler()]
     )
 
+def raise_error(error_type, error_msg):
+    """Log an error message and raise it as the given exception type.
+
+    Args:
+        error_type: Exception class to raise (e.g. ``ValueError``).
+        message: Error message to log and attach to the exception.
+
+    Raises:
+        error_type: Always.
+    """
+    logging.error(error_msg)
+    raise error_type(error_msg)
+
 @lru_cache(maxsize=1)
 def get_params():
     """Retrieve and cache AWS SSM parameters for NASA API and email configuration.
@@ -59,9 +72,8 @@ def get_params():
 
     # Throw an error if one of the parameters hasn't been returned
     if response["InvalidParameters"]:
-        raise ValueError(
-            f"Missing SSM Parameters: {', '.join(response['InvalidParameters'])}"
-        )
+        error_msg = f"Missing SSM Parameters: {', '.join(response['InvalidParameters'])}"
+        raise_error(ValueError, error_msg)
 
     # Put the parameters into a variable
     params = {
@@ -106,8 +118,7 @@ def get_api_response(url, api_key, max_retries=5):
 
     # Return error if API isn't reachable after max_retries
     error_msg = f"Unable to access api after max retries: {max_retries}"
-    logging.error(error_msg)
-    raise Exception(error_msg)
+    raise_error(Exception, error_msg)
 
 def get_img(data):
     """Download the image identified by a NASA API response.
