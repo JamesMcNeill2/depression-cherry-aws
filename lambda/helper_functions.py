@@ -217,7 +217,7 @@ def send_email(nasa_data, img_bytes, subtype, params):
         nasa_data: Dictionary with NASA image metadata, including ``title``, ``date``,
             and ``explanation``.
         img_bytes: Raw image bytes to embed inline in the email HTML body.
-        subtype: Image subtype (e.g., 'png', 'jpg').
+        subtype: Image subtype (e.g., 'png', 'jpeg').
         params: Configuration dictionary containing Gmail and recipient values,
             including ``gmail-password``, ``email-from``, and ``email-to``.
     """
@@ -261,7 +261,7 @@ def send_email(nasa_data, img_bytes, subtype, params):
       <html>
         <body>
           <h2>{html.escape(title)}</h2>
-          <img src="cid:{cid}" style="max-width:100%; height:auto;">
+          {media_html}
           <h2>Explanation</h2>
           <p>{html.escape(explanation)}</p>
         </body>
@@ -272,10 +272,10 @@ def send_email(nasa_data, img_bytes, subtype, params):
     # Add the HTML body and attach the image inline using its CID
     if img_bytes and subtype:
         html_part = msg.get_payload()[-1]
-        html_part.add_related(img_bytes, maintype="image", subtype="jpeg", cid=f"<{cid}>")
+        html_part.add_related(img_bytes, maintype="image", subtype=subtype, cid=f"<{cid}>")
 
     # Connect securely to Gmail, authenticate, and send the email
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as server:
         logging.info("Sending email")
         server.login(params["email-from"], params["gmail-password"])
         server.send_message(msg)
