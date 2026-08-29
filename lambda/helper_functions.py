@@ -1,5 +1,6 @@
 import boto3
 import time
+import html
 import smtplib
 import logging
 from datetime import datetime
@@ -111,7 +112,8 @@ def get_api_response(url, api_key, max_retries=5):
             logging.info(f"{status_code} error: Retrying in {wait}s. Attempt {attempt+1}/{max_retries}")
             time.sleep(wait)
             continue
-        
+
+        # If response has been provided, return it
         response.raise_for_status()
         logging.info(f"Status Code: {response.status_code}")
         return response
