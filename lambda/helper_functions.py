@@ -144,6 +144,49 @@ def get_img_url(nasa_data):
     # If the media_type is other, return None
     return None
 
+def detect_subtype(content, content_type):
+    """Determine the image subtype from the HTTP content type or file signature.
+
+    Args:
+        content: Raw image bytes to inspect when the content type is missing or
+            ambiguous.
+        content_type: HTTP content-type header value, such as ``image/jpeg``.
+
+    Returns:
+        str | None: The normalized subtype name (for example ``jpeg``, ``png``,
+        or ``gif``) when it can be identified, otherwise ``None``.
+    """
+    logging.info("Determining content type")
+
+    # Format content_type
+    # Eg. image/jpeg -> maintype = image, subtype = jpeg
+    maintype, _, subtype = content_type.partition("/")
+    subtype = subtype.split(";")[0].strip().lower()
+
+    # Return the subtype if it is jpeg, png or gif
+    if maintype == "image" and subtype in {"jpeg", "png", "gif"}:
+        logging.info(f"Determined content type: {subtype}")
+        return subtype
+
+    # Defines the bytes each type of file starts with
+    magic = (
+        (b"\xff\xd8\xff", "jpeg"),
+        (b"\x89PNG\r\n\x1a\n", "png"),
+        (b"GIF87a", "gif"),
+        (b"GIF89a", "gif")
+    )
+
+    # Backup for missing content_type
+    # Uses the starting bytes for each file to define file type
+    for signature, name in magic:
+        if content.startswith(signature):
+            logging.info(f"Determined content type: {name}")
+            return name
+
+    logging.info(f"Determined content type: None")
+    return None
+
+def get_img(url):
     """Download the image identified by a NASA API response.
 
     Args:
