@@ -191,7 +191,7 @@ def detect_subtype(content, content_type):
             logging.info(f"Determined content type: {name}")
             return name
 
-    logging.info(f"Determined content type: None")
+    logging.info("Determined content type: None")
     return None
 
 def get_img(url):
