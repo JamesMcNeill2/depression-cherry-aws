@@ -203,6 +203,10 @@ def get_img(url):
     Returns:
         bytes: Downloaded image content.
     """
+    # Check if a url has been passed in
+    if url is None:
+        return None, None
+
     logging.info("Getting image")
     img_response = requests.get(url, timeout=30)
     img_response.raise_for_status()
