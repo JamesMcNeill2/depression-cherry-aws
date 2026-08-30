@@ -123,7 +123,7 @@ def get_api_response(url, api_key, max_retries=5):
                 time.sleep(wait)
             else:
                 # Return error if API isn't reachable after max_retries
-                error_msg = f"f{status_code} error on final attempt: {attempt+1}/{max_retries}"
+                error_msg = f"{status_code} error on final attempt: {attempt+1}/{max_retries}"
                 raise_error(RuntimeError, error_msg)
             continue
 
