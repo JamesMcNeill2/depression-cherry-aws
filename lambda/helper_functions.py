@@ -108,19 +108,27 @@ def get_api_response(url, api_key, max_retries=5):
         ## Only retry if returned status code is 429 or 5xx
         if status_code in (429, 500, 502, 503, 504):
             retry_after = response.headers.get("Retry-After")
-            wait = int(retry_after) if retry_after else 2 ** attempt
-            logging.info(f"{status_code} error: Retrying in {wait}s. Attempt {attempt+1}/{max_retries}")
-            time.sleep(wait)
+
+            # Determine exponential backoff
+            try:
+                wait = int(retry_after) if retry_after else 2 ** attempt
+            except ValueError:
+                wait = 2 ** attempt # Retry-After may be an HTTP-date
+
+            # Sleep or raise error if max_retries hit
+            if attempt < max_retries - 1:
+                logging.info(f"{status_code} error: Retrying in {wait}s. Attempt {attempt+1}/{max_retries}")
+                time.sleep(wait)
+            else:
+                # Return error if API isn't reachable after max_retries
+                error_msg = f"f{status_code} error on final attempt: {attempt+1}/{max_retries}"
+                raise_error(Exception, error_msg)
             continue
 
         # If response has been provided, return it
         response.raise_for_status()
         logging.info(f"Status Code: {response.status_code}")
         return response
-
-    # Return error if API isn't reachable after max_retries
-    error_msg = f"Unable to access api after max retries: {max_retries}"
-    raise_error(Exception, error_msg)
 
 def get_img_url(nasa_data):
     """Extract the image URL from NASA API response data.
