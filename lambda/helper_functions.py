@@ -147,7 +147,7 @@ def get_img_url(nasa_data):
 
     # If the media_type is video, return thumbnail image's url
     if media_type == "video":
-        return nasa_data("thumbnail_url")
+        return nasa_data.get("thumbnail_url")
 
     # If the media_type is other, return None
     return None
