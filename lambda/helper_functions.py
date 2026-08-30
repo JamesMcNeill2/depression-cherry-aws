@@ -102,7 +102,7 @@ def get_api_response(url, api_key, max_retries=5):
     # Query the NASA API for up to max_retries amount of times
     for attempt in range(max_retries):
         logging.info(f"Running api request. Attempt: {attempt+1}")
-        response = requests.get(url, params=params)
+        response = requests.get(url, params=params, timeout=30)
         status_code = response.status_code
 
         ## Only retry if returned status code is 429 or 5xx
