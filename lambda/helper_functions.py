@@ -62,8 +62,6 @@ def get_params():
     Raises:
         ValueError: If any required SSM parameter is missing or inaccessible.
     """
-    logging.info("Getting parameters")
-
     logging.info("Getting parameters from SSM")
     ssm = boto3.client("ssm")
     # Queries AWS Parameter Store for parameters
