@@ -97,6 +97,10 @@ def get_api_response(url, api_key, max_retries=5):
     Returns:
         requests.Response: The successful API response.
     """
+    # Checks max retries is at least 1
+    if max_retries < 1:
+        raise_error(ValueError, f"max_retries must be at least 1, got {max_retries}")
+
     params = {"api_key": api_key, "thumbs": "true"}
 
     # Query the NASA API for up to max_retries amount of times
