@@ -1,3 +1,22 @@
+"""Utility helpers for the NASA image email workflow.
+
+This module centralizes configuration lookup, NASA API access, image validation,
+and email delivery. In AWS, values are loaded from AWS Systems Manager Parameter
+Store under the shared project namespace (currently "/depression-cherry/shared");
+this code does not read local `.env` files at runtime.
+
+Expected SSM parameter names:
+- `nasa-api-key`
+- `gmail-password`
+- `email-from`
+- `email-to`
+
+The functions in this module handle retrying transient NASA API failures,
+checking that downloaded media is a supported image type before embedding it,
+and sending a formatted HTML email through Gmail SMTP with an inline image when
+available.
+"""
+
 import boto3
 import time
 import html
@@ -7,23 +26,6 @@ from datetime import datetime
 from email.message import EmailMessage
 import requests
 from functools import lru_cache
-
-"""Utility helpers for the NASA image email workflow.
-
-This module centralizes configuration lookup, NASA API access, image download,
-and Gmail SMTP delivery. When running in AWS, values are loaded from AWS SSM
-using the `PARAM_PREFIX` environment variable; otherwise the local `.env` file is
-used.
-
-Expected configuration keys:
-- `NASA_API_KEY`
-- `GMAIL_PASSWORD`
-- `EMAIL_FROM`
-- `EMAIL_TO`
-
-When deployed to AWS, the same values are expected under the `PARAM_PREFIX`
-namespace with names such as `{prefix}/nasa-api-key`.
-"""
 
 def configure_logging():
     """Configure the root logger to emit INFO-level console output."""
@@ -60,8 +62,6 @@ def get_params():
     Raises:
         ValueError: If any required SSM parameter is missing or inaccessible.
     """
-    logging.info("Getting parameters")
-
     logging.info("Getting parameters from SSM")
     ssm = boto3.client("ssm")
     # Queries AWS Parameter Store for parameters
@@ -97,20 +97,36 @@ def get_api_response(url, api_key, max_retries=5):
     Returns:
         requests.Response: The successful API response.
     """
+    # Checks max retries is at least 1
+    if max_retries < 1:
+        raise_error(ValueError, f"max_retries must be at least 1, got {max_retries}")
+
     params = {"api_key": api_key, "thumbs": "true"}
 
     # Query the NASA API for up to max_retries amount of times
     for attempt in range(max_retries):
         logging.info(f"Running api request. Attempt: {attempt+1}")
-        response = requests.get(url, params=params)
+        response = requests.get(url, params=params, timeout=30)
         status_code = response.status_code
 
         ## Only retry if returned status code is 429 or 5xx
         if status_code in (429, 500, 502, 503, 504):
             retry_after = response.headers.get("Retry-After")
-            wait = int(retry_after) if retry_after else 2 ** attempt
-            logging.info(f"{status_code} error: Retrying in {wait}s. Attempt {attempt+1}/{max_retries}")
-            time.sleep(wait)
+
+            # Determine exponential backoff
+            try:
+                wait = int(retry_after) if retry_after else 2 ** attempt
+            except ValueError:
+                wait = 2 ** attempt # Retry-After may be an HTTP-date
+
+            # Sleep or raise error if max_retries hit
+            if attempt < max_retries - 1:
+                logging.info(f"{status_code} error: Retrying in {wait}s. Attempt {attempt+1}/{max_retries}")
+                time.sleep(wait)
+            else:
+                # Return error if API isn't reachable after max_retries
+                error_msg = f"{status_code} error on final attempt: {attempt+1}/{max_retries}"
+                raise_error(RuntimeError, error_msg)
             continue
 
         # If response has been provided, return it
@@ -118,19 +134,17 @@ def get_api_response(url, api_key, max_retries=5):
         logging.info(f"Status Code: {response.status_code}")
         return response
 
-    # Return error if API isn't reachable after max_retries
-    error_msg = f"Unable to access api after max retries: {max_retries}"
-    raise_error(Exception, error_msg)
-
 def get_img_url(nasa_data):
-    """Extract the image URL from NASA API response data.
+    """Return the image or thumbnail URL for a NASA media item.
 
     Args:
-        nasa_data: Dictionary containing NASA API response with ``media_type``
-            and either ``url`` (for images) or ``thumbnail_url`` (for videos).
+        nasa_data: NASA API response payload. It should include a ``media_type``
+            field and either an ``url`` for images or a ``thumbnail_url`` for
+            videos.
 
     Returns:
-        str | None: The image or thumbnail URL if available, otherwise None.
+        str | None: The relevant image URL when one is present; otherwise,
+        ``None``.
     """
     # If the media_type is image, return the image's source url
     media_type = nasa_data.get("media_type")
@@ -139,7 +153,7 @@ def get_img_url(nasa_data):
 
     # If the media_type is video, return thumbnail image's url
     if media_type == "video":
-        return nasa_data("thumbnail_url")
+        return nasa_data.get("thumbnail_url")
 
     # If the media_type is other, return None
     return None
@@ -183,7 +197,7 @@ def detect_subtype(content, content_type):
             logging.info(f"Determined content type: {name}")
             return name
 
-    logging.info(f"Determined content type: None")
+    logging.info("Determined content type: None")
     return None
 
 def get_img(url):
@@ -195,6 +209,10 @@ def get_img(url):
     Returns:
         bytes: Downloaded image content.
     """
+    # Check if a url has been passed in
+    if url is None:
+        return None, None
+
     logging.info("Getting image")
     img_response = requests.get(url, timeout=30)
     img_response.raise_for_status()

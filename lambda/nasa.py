@@ -13,16 +13,12 @@ def lambda_handler(event, context):
     # APOD = Astronomy Picture of the Day
     nasa_data = get_api_response(URL, params["nasa-api-key"]).json()
 
-    img_url = get_img_url(nasa_data)
-    if img_url:
-        img_bytes, subtype = get_img(img_url)
-    else:
-        img_bytes, subtype = None, None
+    img_bytes, subtype = get_img(get_img_url(nasa_data))
 
     # Emails the title, photo and description
     send_email(nasa_data, img_bytes, subtype, params)
 
-    return {"status": "sent", "date": nasa_data["date"]}
+    return {"status": "sent", "date": nasa_data.get("date")}
 
 if __name__ =="__main__":
     lambda_handler({},{})
