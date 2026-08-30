@@ -1,13 +1,3 @@
-import boto3
-import time
-import html
-import smtplib
-import logging
-from datetime import datetime
-from email.message import EmailMessage
-import requests
-from functools import lru_cache
-
 """Utility helpers for the NASA image email workflow.
 
 This module centralizes configuration lookup, NASA API access, image validation,
@@ -26,6 +16,16 @@ checking that downloaded media is a supported image type before embedding it,
 and sending a formatted HTML email through Gmail SMTP with an inline image when
 available.
 """
+
+import boto3
+import time
+import html
+import smtplib
+import logging
+from datetime import datetime
+from email.message import EmailMessage
+import requests
+from functools import lru_cache
 
 def configure_logging():
     """Configure the root logger to emit INFO-level console output."""
