@@ -10,19 +10,21 @@ from functools import lru_cache
 
 """Utility helpers for the NASA image email workflow.
 
-This module centralizes configuration lookup, NASA API access, image download,
-and Gmail SMTP delivery. When running in AWS, values are loaded from AWS SSM
-using the `PARAM_PREFIX` environment variable; otherwise the local `.env` file is
-used.
+This module centralizes configuration lookup, NASA API access, image validation,
+and email delivery. In AWS, values are loaded from AWS Systems Manager Parameter
+Store under the shared project namespace (currently "/depression-cherry/shared");
+this code does not read local `.env` files at runtime.
 
-Expected configuration keys:
-- `NASA_API_KEY`
-- `GMAIL_PASSWORD`
-- `EMAIL_FROM`
-- `EMAIL_TO`
+Expected SSM parameter names:
+- `nasa-api-key`
+- `gmail-password`
+- `email-from`
+- `email-to`
 
-When deployed to AWS, the same values are expected under the `PARAM_PREFIX`
-namespace with names such as `{prefix}/nasa-api-key`.
+The functions in this module handle retrying transient NASA API failures,
+checking that downloaded media is a supported image type before embedding it,
+and sending a formatted HTML email through Gmail SMTP with an inline image when
+available.
 """
 
 def configure_logging():
