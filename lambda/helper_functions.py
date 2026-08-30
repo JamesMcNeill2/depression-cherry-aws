@@ -131,14 +131,16 @@ def get_api_response(url, api_key, max_retries=5):
         return response
 
 def get_img_url(nasa_data):
-    """Extract the image URL from NASA API response data.
+    """Return the image or thumbnail URL for a NASA media item.
 
     Args:
-        nasa_data: Dictionary containing NASA API response with ``media_type``
-            and either ``url`` (for images) or ``thumbnail_url`` (for videos).
+        nasa_data: NASA API response payload. It should include a ``media_type``
+            field and either an ``url`` for images or a ``thumbnail_url`` for
+            videos.
 
     Returns:
-        str | None: The image or thumbnail URL if available, otherwise None.
+        str | None: The relevant image URL when one is present; otherwise,
+        ``None``.
     """
     # If the media_type is image, return the image's source url
     media_type = nasa_data.get("media_type")
