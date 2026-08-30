@@ -28,12 +28,22 @@ import requests
 from functools import lru_cache
 
 def configure_logging():
-    """Configure the root logger to emit INFO-level console output."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[logging.StreamHandler()]
-    )
+    """Configure logging for both Lambda and local execution."""
+
+    root = logging.getLogger()
+
+    if root.handlers:
+        # Set the logging for lambda
+        root.setLevel(logging.INFO)
+        for handler in root.handlers:
+            handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+    else:
+        # Set the logging for local execution
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s [%(levelname)s] %(message)s",
+            handlers=[logging.StreamHandler()]
+        )
 
 def raise_error(error_type, error_msg):
     """Log an error message and raise it as the given exception type.
