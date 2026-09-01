@@ -279,6 +279,14 @@ def send_email(nasa_data, img_bytes, subtype, params):
         params: Configuration dictionary containing Gmail and recipient values,
             including ``gmail-password``, ``email-from``, and ``email-to``.
     """
+    # Define the colours used in the email
+    bg = "#f4f4f7"
+    card = "#ffffff"
+    heading = "#1a1a1a"
+    body_text = "#3c4043"
+    muted = "#6b7280"
+    link = "#1a5fb4"
+
     # Extract and format info from nasa_data
     title, explanation, source_url = nasa_data["title"], nasa_data["explanation"], nasa_data["url"]
     formatted_date = datetime.strptime(nasa_data["date"], "%Y-%m-%d").strftime("%d %B %Y")
@@ -297,13 +305,22 @@ def send_email(nasa_data, img_bytes, subtype, params):
     # If a usable image is available, embed it inline in the email using a CID so the
     # HTML can render it without attaching a separate file; otherwise, fall back to a
     # direct link for videos or the original NASA page.
+    img_style = "display:block; width:100%; height:auto; border-radius:4px;"
+    link_style = f"color:{link}; text-decoration:none;"
+
     if img_bytes and subtype:
-        media_html = f'<img src="cid:{cid}" style="max-width:100%; height:auto;">'
+        media_html = f'<img src="cid:{cid}" alt="{html.escape(title, quote=True)}" style="{img_style}">'
         if is_video:
-            media_html += f'<p><a href="{safe_url}">Watch the video</a></p>'
+            media_html += (
+                f'<p style="margin:12px 0 0 0; font-family:Helvetica,Arial,sans-serif; font-size:14px;">'
+                f'<a href="{safe_url}" style="{link_style}">&#9654; Watch the video</a></p>'
+            )
     else:
         label = "Watch the video" if is_video else "View on NASA"
-        media_html = f'<p><a href="{safe_url}">{label}</a></p>'
+        media_html = (
+            f'<p style="margin:0; font-family:Helvetica,Arial,sans-serif; font-size:14px;">'
+            f'<a href="{safe_url}" style="{link_style}">{label}</a></p>'
+        )
 
     # Define and format the data needed for the email
     msg = EmailMessage()
@@ -314,16 +331,57 @@ def send_email(nasa_data, img_bytes, subtype, params):
     # Plain-text part first, for clients that won't render HTML
     msg.set_content(f"{title}\n\n{source_url}\n\nExplanation\n\n{explanation}")
 
-    # Define the HTML body of the email
-    html_body = f"""
-      <html>
-        <body>
-          <h2>{html.escape(title)}</h2>
-          {media_html}
-          <h2>Explanation</h2>
-          <p>{html.escape(explanation)}</p>
-        </body>
-      </html>
+    html_body = f"""\
+    <html>
+    <body style="margin:0; padding:0; background-color:{bg};">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+            style="background-color:{bg}; padding:24px 12px;">
+        <tr>
+            <td align="center">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                    style="max-width:600px; background-color:{card}; border-radius:8px; overflow:hidden; border:1px solid #e4e4e7;">
+                <tr>
+                <td style="padding:28px 28px 8px 28px;">
+                    <p style="margin:0 0 6px 0; font-family:Helvetica,Arial,sans-serif;
+                            font-size:12px; letter-spacing:1.5px; text-transform:uppercase;
+                            color:{muted};">
+                    Astronomy Picture of the Day
+                    </p>
+                    <h1 style="margin:0 0 4px 0; font-family:Georgia,'Times New Roman',serif;
+                            font-size:26px; line-height:1.25; color:{heading}; font-weight:normal;">
+                    {html.escape(title)}
+                    </h1>
+                    <p style="margin:0; font-family:Helvetica,Arial,sans-serif;
+                            font-size:13px; color:{muted};">
+                    {formatted_date}
+                    </p>
+                </td>
+                </tr>
+                <tr>
+                <td style="padding:20px 28px;">
+                    {media_html}
+                </td>
+                </tr>
+                <tr>
+                <td style="padding:0 28px 28px 28px;">
+                    <p style="margin:0; font-family:Georgia,'Times New Roman',serif;
+                            font-size:16px; line-height:1.65; color:{body_text};">
+                    {html.escape(explanation)}
+                    </p>
+                    <p style="margin:24px 0 0 0; font-family:Helvetica,Arial,sans-serif;
+                            font-size:13px;">
+                    <a href="{safe_url}" style="color:{link}; text-decoration:none;">
+                        View on NASA &rarr;
+                    </a>
+                    </p>
+                </td>
+                </tr>
+            </table>
+            </td>
+        </tr>
+        </table>
+    </body>
+    </html>
     """
     msg.add_alternative(html_body, subtype="html")
     
