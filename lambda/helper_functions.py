@@ -134,7 +134,7 @@ def get_api_response(url, api_key, max_retries=5):
             response = requests.get(url, params=params, timeout=10)
             status_code = response.status_code
         # Handle no response received
-        except requests.RaiseException as exc:
+        except requests.RequestException as exc:
             response, reason = None, f"Failed request ({exc})"
         else:
             # Only retry if returned status code is 429 or 5xx
@@ -155,7 +155,7 @@ def get_api_response(url, api_key, max_retries=5):
         # and log reason for failure
         wait = retry_delay(response, attempt)
         logging.warning(f"NASA API: {reason}. Retrying in {wait}s")
-        continue
+        time.sleep(wait)
 
     error_msg = f"No API request attempted (max_retries={max_retries})"
     raise_error(RuntimeError, error_msg)
