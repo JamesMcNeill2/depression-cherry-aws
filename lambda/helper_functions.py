@@ -189,10 +189,12 @@ def get_img_url(nasa_data):
     # If the media_type is image, return the image's source url
     media_type = nasa_data.get("media_type")
     if media_type == "image":
+        logging.info("APOD is an image")
         return nasa_data.get("url")
 
     # If the media_type is video, return thumbnail image's url
     if media_type == "video":
+        logging.info("APOD is an video")
         return nasa_data.get("thumbnail_url")
 
     # If the media_type is other, return None
@@ -251,6 +253,7 @@ def get_img(url):
     """
     # Check if a url has been passed in
     if not url:
+        logging.info("No image url")
         return None, None
 
     logging.info("Getting image")
