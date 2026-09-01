@@ -250,7 +250,7 @@ def get_img(url):
         tuple: Downloaded image content (bytes) and subtype (str), or (None, None) on failure.
     """
     # Check if a url has been passed in
-    if url is None:
+    if not url:
         return None, None
 
     logging.info("Getting image")
