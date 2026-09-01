@@ -132,7 +132,6 @@ def get_api_response(url, api_key, max_retries=5):
         ValueError: If max_retries is less than 1.
         RuntimeError: If the API request fails after all retry attempts.
     """
-    
     # Error out if supplied max_retries is less than 1
     if max_retries < 1:
         raise_error(ValueError, f"max_retries must be at least 1, got: {max_retries}")
@@ -245,10 +244,10 @@ def get_img(url):
     """Download the image identified by a NASA API response.
 
     Args:
-        data: Response data containing the image ``url``.
+        url: URL of the image to download.
 
     Returns:
-        bytes: Downloaded image content.
+        tuple: Downloaded image content (bytes) and subtype (str), or (None, None) on failure.
     """
     # Check if a url has been passed in
     if url is None:
