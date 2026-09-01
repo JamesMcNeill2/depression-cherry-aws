@@ -120,7 +120,7 @@ def retry_delay(response, attempt):
 def get_api_response(url, api_key, max_retries=5):
     # Error out if supplied max_retries is less than 1
     if max_retries < 1:
-            raise_error(ValueError, f"max_retries must be at least 1, got: {max_retries}")
+        raise_error(ValueError, f"max_retries must be at least 1, got: {max_retries}")
 
     params = {"api_key": api_key, "thumbs": "true"}
     last_attempt = max_retries - 1
