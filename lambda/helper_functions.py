@@ -118,6 +118,21 @@ def retry_delay(response, attempt):
     return 2 ** attempt
 
 def get_api_response(url, api_key, max_retries=5):
+    """Make an HTTP GET request to the NASA API with retry logic.
+
+    Args:
+        url (str): The API endpoint URL to query.
+        api_key (str): The API key for authentication.
+        max_retries (int, optional): Maximum number of retry attempts. Defaults to 5.
+
+    Returns:
+        requests.Response: The HTTP response object on successful request.
+
+    Raises:
+        ValueError: If max_retries is less than 1.
+        RuntimeError: If the API request fails after all retry attempts.
+    """
+    
     # Error out if supplied max_retries is less than 1
     if max_retries < 1:
         raise_error(ValueError, f"max_retries must be at least 1, got: {max_retries}")
