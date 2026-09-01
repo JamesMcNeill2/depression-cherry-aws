@@ -96,54 +96,84 @@ def get_params():
     
     return params
 
-def get_api_response(url, api_key, max_retries=5):
-    """Fetch a NASA API resource, retrying transient HTTP failures.
+def retry_delay(response, attempt):
+    """Calculate the delay time for retrying an API request.
 
     Args:
-        url: NASA API endpoint to request.
-        api_key: NASA API key.
-        max_retries: Maximum number of request attempts.
+        response: The HTTP response object or None if request failed.
+        attempt: The current attempt number (0-indexed).
 
     Returns:
-        requests.Response: The successful API response.
+        int: The number of seconds to wait before retrying, based on the
+            Retry-After header if present, otherwise exponential backoff.
     """
-    # Checks max retries is at least 1
+    if response is not None:
+        retry_after = response.headers.get("Retry-After")
+        if retry_after:
+            try:
+                return max(0, int(retry_after))
+            except ValueError:
+                # Retry-After may be an HTTP-date rather than seconds
+                pass
+    return 2 ** attempt
+
+def get_api_response(url, api_key, max_retries=5):
+    """Make an HTTP GET request to the NASA API with retry logic.
+
+    Args:
+        url (str): The API endpoint URL to query.
+        api_key (str): The API key for authentication.
+        max_retries (int, optional): Maximum number of retry attempts. Defaults to 5.
+
+    Returns:
+        requests.Response: The HTTP response object on successful request.
+
+    Raises:
+        ValueError: If max_retries is less than 1.
+        RuntimeError: If the API request fails after all retry attempts.
+    """
+    # Error out if supplied max_retries is less than 1
     if max_retries < 1:
-        raise_error(ValueError, f"max_retries must be at least 1, got {max_retries}")
+        raise_error(ValueError, f"max_retries must be at least 1, got: {max_retries}")
 
     params = {"api_key": api_key, "thumbs": "true"}
+    last_attempt = max_retries - 1
 
     # Query the NASA API for up to max_retries amount of times
     for attempt in range(max_retries):
-        logging.info(f"Running api request. Attempt: {attempt+1}")
-        response = requests.get(url, params=params, timeout=30)
-        status_code = response.status_code
+        logging.info(f"Running api request. Attempt: {attempt+1}/{max_retries}")
 
-        ## Only retry if returned status code is 429 or 5xx
-        if status_code in (429, 500, 502, 503, 504):
-            retry_after = response.headers.get("Retry-After")
-
-            # Determine exponential backoff
-            try:
-                wait = int(retry_after) if retry_after else 2 ** attempt
-            except ValueError:
-                wait = 2 ** attempt # Retry-After may be an HTTP-date
-
-            # Sleep or raise error if max_retries hit
-            if attempt < max_retries - 1:
-                logging.info(f"{status_code} error: Retrying in {wait}s. Attempt {attempt+1}/{max_retries}")
-                time.sleep(wait)
+        try:
+            # Call the api and retrieve status code
+            response = requests.get(url, params=params, timeout=10)
+            status_code = response.status_code
+        # Handle no response received
+        except requests.RequestException as exc:
+            response, reason = None, f"Failed request ({exc})"
+        else:
+            # Only retry if returned status code is 429 or 5xx
+            if status_code in (429, 500, 502, 503, 504):
+                reason = f"{status_code} response"
             else:
-                # Return error if API isn't reachable after max_retries
-                error_msg = f"{status_code} error on final attempt: {attempt+1}/{max_retries}"
-                raise_error(RuntimeError, error_msg)
-            continue
+                # Non-retryable (401, 404) errors raised here
+                response.raise_for_status()
+                # Return response if it has been received
+                logging.info(f"Status Code: {status_code}")
+                return response
 
-        # If response has been provided, return it
-        response.raise_for_status()
-        logging.info(f"Status Code: {response.status_code}")
-        return response
+        # Raise error if api call hasn't worked by the last attempt
+        if attempt == last_attempt:
+            raise_error(RuntimeError, f"NASA API: {reason} after {max_retries}/{max_retries} attempts")
 
+        # Define delay time (exponential backoff)
+        # and log reason for failure
+        wait = retry_delay(response, attempt)
+        logging.warning(f"NASA API: {reason}. Retrying in {wait}s")
+        time.sleep(wait)
+
+    error_msg = f"No API request attempted (max_retries={max_retries})"
+    raise_error(RuntimeError, error_msg)
+    
 def get_img_url(nasa_data):
     """Return the image or thumbnail URL for a NASA media item.
 
@@ -214,10 +244,10 @@ def get_img(url):
     """Download the image identified by a NASA API response.
 
     Args:
-        data: Response data containing the image ``url``.
+        url: URL of the image to download.
 
     Returns:
-        bytes: Downloaded image content.
+        tuple: Downloaded image content (bytes) and subtype (str), or (None, None) on failure.
     """
     # Check if a url has been passed in
     if url is None:
