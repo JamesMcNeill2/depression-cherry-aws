@@ -281,12 +281,13 @@ def send_email(nasa_data, img_bytes, subtype, params):
         params: Dictionary containing email configuration (email-from, email-to).
     """
     # Define the colours used in the email
-    bg = "#f4f4f7"
-    card = "#ffffff"
-    heading = "#1a1a1a"
-    body_text = "#3c4043"
-    muted = "#6b7280"
-    link = "#1a5fb4"
+    bg = "#0a0a0a"
+    card = "#161616"
+    heading = "#f5f5f5"
+    body_text = "#c4c4c4"
+    muted = "#8a8a8a"
+    link = "#d4d4d4"
+    border = "#2a2a2a"
 
     # Extract and format info from nasa_data
     title, explanation, source_url = nasa_data["title"], nasa_data["explanation"], nasa_data["url"]
@@ -340,7 +341,7 @@ def send_email(nasa_data, img_bytes, subtype, params):
         <tr>
             <td align="center">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-                    style="max-width:600px; background-color:{card}; border-radius:8px; overflow:hidden; border:1px solid #e4e4e7;">
+                    style="max-width:600px; background-color:{card}; border-radius:8px; overflow:hidden; border:1px solid {border};">
                 <tr>
                 <td style="padding:28px 28px 8px 28px;">
                     <p style="margin:0 0 6px 0; font-family:Helvetica,Arial,sans-serif;
