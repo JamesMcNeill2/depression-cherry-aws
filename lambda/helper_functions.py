@@ -83,6 +83,8 @@ def get_params():
         WithDecryption=True
     )
 
+    logging.info("boto3 %s", boto3.__version__)
+
     # Throw an error if one of the parameters hasn't been returned
     if response["InvalidParameters"]:
         error_msg = f"Missing SSM Parameters: {', '.join(response['InvalidParameters'])}"

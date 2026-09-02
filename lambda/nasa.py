@@ -1,4 +1,3 @@
-import boto3
 from helper_functions import (
     configure_logging,
     get_api_response,
@@ -16,8 +15,6 @@ def lambda_handler(event, context):
     # Sets up the logger and defines parameters
     configure_logging()
     params = get_params()
-
-    print("boto3 %s", boto3.__version__)
 
     # Fetches today's NASA APOD data
     # APOD = Astronomy Picture of the Day
