@@ -24,7 +24,7 @@ import time
 from datetime import datetime
 from email.message import EmailMessage
 from functools import lru_cache
-from typing import Any, Optional
+from typing import Any
 
 import boto3
 import requests
