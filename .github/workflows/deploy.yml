@@ -37,10 +37,10 @@ jobs:
       - name: Install CDK CLI
         run: npm install -g aws-cdk
       
-      - name: Install Python Dependancies
+      - name: Install Python Dependencies
         run: pip install -r requirements.txt
       
-      - name: Install Lambda Dependancies
+      - name: Install Lambda Dependencies
         run: |
           pip install -r lambda/requirements.txt -t lambda/ \
             --platform manylinux2014_x86_64 \
