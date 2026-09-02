@@ -46,7 +46,7 @@ jobs:
     
     - name: Get Stack Name
       run: |
-        STACK_NAME=$(cdk list --no-notices | tail -n 1)
+        STACK_NAME=$(cdk list --no-notices)
         if [ -z "$STACK_NAME" ]; then
           echo "::error::Could not resolve stack name"
           exit 1
