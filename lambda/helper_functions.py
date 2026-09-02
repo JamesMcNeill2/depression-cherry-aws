@@ -16,9 +16,9 @@ checking that downloaded media is a supported image type before embedding it,
 and sending a formatted HTML email through Gmail SMTP with an inline image when
 available.
 """
-
 import html
 import logging
+import os
 import smtplib
 import time
 from datetime import datetime
@@ -77,9 +77,10 @@ def get_params():
     logging.info("Getting parameters from SSM")
     ssm = boto3.client("ssm")
     # Queries AWS Parameter Store for parameters
+    prefix = os.environ.get("PARAM_PREFIX", "/depression-cherry/shared")
     param_names = ("nasa-api-key", "gmail-password", "email-from", "email-to")
     response = ssm.get_parameters(
-        Names=[f"/depression-cherry/shared/{name}" for name in param_names],
+        Names=[f"{prefix}/{name}" for name in param_names],
         WithDecryption=True
     )
 
