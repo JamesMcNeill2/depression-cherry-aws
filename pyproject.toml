@@ -1,6 +1,14 @@
 [tool.ruff]
 line-length = 100
 target-version = "py313"
+extend-exclude = [
+    "lambda/requests",
+    "lambda/urllib3",
+    "lambda/certifi",
+    "lambda/idna",
+    "lambda/charset_normalizer",
+    "cdk.out",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "G"]
