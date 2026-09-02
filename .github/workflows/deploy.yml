@@ -29,6 +29,11 @@ jobs:
           python-version: '3.13'
           cache: 'pip'
       
+      - name: Ruff Ruff
+        run: |
+          pip install ruff
+          ruff check .
+      
       - name: Setup Node
         uses: actions/setup-node@v4
         with:

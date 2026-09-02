@@ -1,18 +1,16 @@
-from aws_cdk import (
-    Stack,
-    Duration,
-    RemovalPolicy,
-    aws_lambda as _lambda,
-    aws_logs as logs,
-    aws_ssm as ssm,
-    aws_iam as iam,
-    aws_scheduler as scheduler
-)
+from aws_cdk import Duration, RemovalPolicy, Stack
+from aws_cdk import aws_iam as iam
+from aws_cdk import aws_lambda as _lambda
+from aws_cdk import aws_logs as logs
+from aws_cdk import aws_scheduler as scheduler
+from aws_cdk import aws_ssm as ssm
 from constructs import Construct
+
 
 class DepressionCherryAwsStack(Stack):
 
-    def __init__(self, scope: Construct, construct_id: str, env_name: str, env_suffix: str, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str,
+                 env_name: str, env_suffix: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         log_group = logs.LogGroup(
@@ -21,7 +19,7 @@ class DepressionCherryAwsStack(Stack):
             removal_policy=RemovalPolicy.DESTROY,
         )
 
-        prefix = f"/depression-cherry/shared"
+        prefix = "/depression-cherry/shared"
 
         fn = _lambda.Function(
             self, "Nasa",
@@ -36,7 +34,7 @@ class DepressionCherryAwsStack(Stack):
             timeout=Duration.seconds(120),           # 2 min
             log_group=log_group
             )
-        
+
         for name in ["nasa-api-key", "gmail-password", "email-from", "email-to"]:
             ssm.StringParameter.from_secure_string_parameter_attributes(
                 self, f"Param{name.title().replace('-', '')}",

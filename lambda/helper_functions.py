@@ -17,15 +17,17 @@ and sending a formatted HTML email through Gmail SMTP with an inline image when
 available.
 """
 
-import boto3
-import time
 import html
-import smtplib
 import logging
+import smtplib
+import time
 from datetime import datetime
 from email.message import EmailMessage
-import requests
 from functools import lru_cache
+
+import boto3
+import requests
+
 
 def configure_logging():
     """Configure logging for both Lambda and local execution."""
@@ -91,9 +93,9 @@ def get_params():
         p["Name"].split("/")[-1]: p["Value"]
         for p in response["Parameters"]
     }
-    
+
     logging.info("All parameters have been retrieved")
-    
+
     return params
 
 def retry_delay(response, attempt):
@@ -141,7 +143,7 @@ def get_api_response(url, api_key, max_retries=5):
 
     # Query the NASA API for up to max_retries amount of times
     for attempt in range(max_retries):
-        logging.info(f"Running api request. Attempt: {attempt+1}/{max_retries}")
+        logging.info("Running api request. Attempt: %d/%d", attempt + 1, max_retries)
 
         try:
             # Call the api and retrieve status code
@@ -158,22 +160,23 @@ def get_api_response(url, api_key, max_retries=5):
                 # Non-retryable (401, 404) errors raised here
                 response.raise_for_status()
                 # Return response if it has been received
-                logging.info(f"Status Code: {status_code}")
+                logging.info("Status Code: %d", status_code)
                 return response
 
         # Raise error if api call hasn't worked by the last attempt
         if attempt == last_attempt:
-            raise_error(RuntimeError, f"NASA API: {reason} after {max_retries}/{max_retries} attempts")
+            error_msg = f"NASA API: {reason} after {max_retries}/{max_retries} attempts"
+            raise_error(RuntimeError, error_msg)
 
         # Define delay time (exponential backoff)
         # and log reason for failure
         wait = retry_delay(response, attempt)
-        logging.warning(f"NASA API: {reason}. Retrying in {wait}s")
+        logging.warning("NASA API: %s. Retrying in %ds", reason, wait)
         time.sleep(wait)
 
     error_msg = f"No API request attempted (max_retries={max_retries})"
     raise_error(RuntimeError, error_msg)
-    
+
 def get_img_url(nasa_data):
     """Return the image or thumbnail URL for a NASA media item.
 
@@ -221,7 +224,7 @@ def detect_subtype(content, content_type):
 
     # Return the subtype if it is jpeg, png or gif
     if maintype == "image" and subtype in {"jpeg", "png", "gif"}:
-        logging.info(f"Determined content type: {subtype}")
+        logging.info("Determined content type: %s", subtype)
         return subtype
 
     # Defines the bytes each type of file starts with
@@ -236,7 +239,7 @@ def detect_subtype(content, content_type):
     # Uses the starting bytes for each file to define file type
     for signature, name in magic:
         if content.startswith(signature):
-            logging.info(f"Determined content type: {name}")
+            logging.info("Determined content type: %s", name)
             return name
 
     logging.info("Determined content type: None")
@@ -265,7 +268,7 @@ def get_img(url):
     # when the URL resolves successfully, so we reject anything we can't identify.
     subtype = detect_subtype(img_response.content, img_response.headers.get("Content-Type", ""))
     if subtype is None:
-        logging.warning(f"Unrecognised image type at {url}")
+        logging.warning("Unrecognised image type at %s", url)
         return None, None
 
     logging.info("Image received (%s, %d bytes)", subtype, len(img_response.content))
@@ -273,7 +276,7 @@ def get_img(url):
 
 def send_email(nasa_data, img_bytes, subtype, params):
     """Send an email with NASA APOD data and image through Gmail SMTP.
-    
+
     Args:
         nasa_data: Dictionary containing NASA APOD data (title, explanation, url, date, media_type).
         img_bytes: Binary image data to embed in the email, or None.
@@ -304,23 +307,29 @@ def send_email(nasa_data, img_bytes, subtype, params):
     cid = "nasa_image"
     safe_url = html.escape(source_url, quote=True)
 
+    # Fonts and shared styles for the email body
+    sans = "Helvetica,Arial,sans-serif"
+    serif = "Georgia,'Times New Roman',serif"
+    img_style = "display:block; width:100%; height:auto; border-radius:4px;"
+    link_style = f"color:{link}; text-decoration:none;"
+    p_style = f"font-family:{sans}; font-size:14px;"
+
+    safe_title = html.escape(title, quote=True)
+
     # If a usable image is available, embed it inline in the email using a CID so the
     # HTML can render it without attaching a separate file; otherwise, fall back to a
     # direct link for videos or the original NASA page.
-    img_style = "display:block; width:100%; height:auto; border-radius:4px;"
-    link_style = f"color:{link}; text-decoration:none;"
-
     if img_bytes and subtype:
-        media_html = f'<img src="cid:{cid}" alt="{html.escape(title, quote=True)}" style="{img_style}">'
+        media_html = f'<img src="cid:{cid}" alt="{safe_title}" style="{img_style}">'
         if is_video:
             media_html += (
-                f'<p style="margin:12px 0 0 0; font-family:Helvetica,Arial,sans-serif; font-size:14px;">'
+                f'<p style="margin:12px 0 0 0; {p_style}">'
                 f'<a href="{safe_url}" style="{link_style}">&#9654; Watch the video</a></p>'
             )
     else:
         label = "Watch the video" if is_video else "View on NASA"
         media_html = (
-            f'<p style="margin:0; font-family:Helvetica,Arial,sans-serif; font-size:14px;">'
+            f'<p style="margin:0; {p_style}">'
             f'<a href="{safe_url}" style="{link_style}">{label}</a></p>'
         )
 
@@ -341,19 +350,20 @@ def send_email(nasa_data, img_bytes, subtype, params):
         <tr>
             <td align="center">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-                    style="max-width:600px; background-color:{card}; border-radius:8px; overflow:hidden; border:1px solid {border};">
+                    style="max-width:600px; background-color:{card}; border-radius:8px;
+                    overflow:hidden; border:1px solid {border};">
                 <tr>
                 <td style="padding:28px 28px 8px 28px;">
-                    <p style="margin:0 0 6px 0; font-family:Helvetica,Arial,sans-serif;
+                    <p style="margin:0 0 6px 0; font-family:{sans};
                             font-size:12px; letter-spacing:1.5px; text-transform:uppercase;
                             color:{muted};">
                     Astronomy Picture of the Day
                     </p>
-                    <h1 style="margin:0 0 4px 0; font-family:Georgia,'Times New Roman',serif;
+                    <h1 style="margin:0 0 4px 0; font-family:{serif};
                             font-size:26px; line-height:1.25; color:{heading}; font-weight:normal;">
-                    {html.escape(title)}
+                    {safe_title}
                     </h1>
-                    <p style="margin:0; font-family:Helvetica,Arial,sans-serif;
+                    <p style="margin:0; font-family:{sans};
                             font-size:13px; color:{muted};">
                     {formatted_date}
                     </p>
@@ -366,13 +376,13 @@ def send_email(nasa_data, img_bytes, subtype, params):
                 </tr>
                 <tr>
                 <td style="padding:0 28px 28px 28px;">
-                    <p style="margin:0; font-family:Georgia,'Times New Roman',serif;
+                    <p style="margin:0; font-family:{serif};
                             font-size:16px; line-height:1.65; color:{body_text};">
                     {html.escape(explanation)}
                     </p>
-                    <p style="margin:24px 0 0 0; font-family:Helvetica,Arial,sans-serif;
+                    <p style="margin:24px 0 0 0; font-family:{sans};
                             font-size:13px;">
-                    <a href="{safe_url}" style="color:{link}; text-decoration:none;">
+                    <a href="{safe_url}" style="{link_style}">
                         View on NASA &rarr;
                     </a>
                     </p>
@@ -386,7 +396,7 @@ def send_email(nasa_data, img_bytes, subtype, params):
     </html>
     """
     msg.add_alternative(html_body, subtype="html")
-    
+
     # Add the HTML body and attach the image inline using its CID
     if img_bytes and subtype:
         html_part = msg.get_payload()[-1]
