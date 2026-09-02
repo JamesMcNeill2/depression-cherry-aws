@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
+import hashlib
 import os
 import re
-import hashlib
+
 import aws_cdk as cdk
+
 from depression_cherry_aws.depression_cherry_aws_stack import DepressionCherryAwsStack
 
 app = cdk.App()
@@ -16,7 +18,7 @@ def get_env_suffix(branch: str) -> str:
         return "prod"
     if branch == "dev":
         return "dev"
-    
+
     # feature/branch-name -> feature-branch-name
     suffix = branch.lower()
     suffix = re.sub(r"[^a-z0-9-]", "-", suffix)
