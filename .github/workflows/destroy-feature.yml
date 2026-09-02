@@ -1,7 +1,7 @@
 name: CDK Destroy Feature Branch
 
 on:
-  delete
+  delete:
 
 permissions:
   id-token: write
@@ -44,5 +44,29 @@ jobs:
         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/CdkDeployRole
         aws-region: eu-west-2
     
+    - name: Get Stack Name
+      run: |
+        STACK_NAME=$(cdk list --no-notices | tail -n 1)
+        if [ -z "$STACK_NAME" ]; then
+          echo "::error::Could not resolve stack name"
+          exit 1
+        fi
+        case "$STACK_NAME" in
+          *-prod|*-dev)
+            echo "::error::Refusing to destroy $STACK_NAME"
+            exit 1
+            ;;
+        esac
+        echo "STACK_NAME=$STACK_NAME" >> "$GITHUB_ENV"
+        echo "Resolved stack: $STACK_NAME"
+    
     - name: Destroy
-      run: cdk destroy --all --force
+      run: cdk destroy "$STACK_NAME" --force
+
+    - name: Verify Stack Is Gone
+      run: |
+        if aws cloudformation describe-stacks --stack-name "$STACK_NAME" >/dev/null 2>&1; then
+          echo "::error::$STACK_NAME still exists after destroy"
+          exit 1
+        fi
+        echo "$STACK_NAME destroyed"
