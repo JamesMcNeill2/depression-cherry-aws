@@ -1,6 +1,13 @@
-from helper_functions import configure_logging, get_params, get_api_response, get_img_url, get_img, send_email
+from helper_functions import (
+    configure_logging,
+    get_api_response,
+    get_img,
+    get_img_url,
+    get_params,
+    send_email,
+)
 
-# Defines the Nasa API URL  
+# Defines the Nasa API URL
 URL = "https://api.nasa.gov/planetary/apod"
 
 def lambda_handler(event, context):
