@@ -281,7 +281,7 @@ def send_email(nasa_data, img_bytes, subtype, params):
         nasa_data: Dictionary containing NASA APOD data (title, explanation, url, date, media_type).
         img_bytes: Binary image data to embed in the email, or None.
         subtype: Image subtype (e.g., 'jpeg', 'png'), or None.
-        params: Dictionary containing email configuration (email-from, email-to).
+        params: Dictionary containing email configuration (email-from, email-to, gmail-password).
     """
     # Define the colours used in the email
     bg = "#0a0a0a"
