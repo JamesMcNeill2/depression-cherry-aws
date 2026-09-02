@@ -24,12 +24,13 @@ import time
 from datetime import datetime
 from email.message import EmailMessage
 from functools import lru_cache
+from typing import Any, Optional
 
 import boto3
 import requests
 
 
-def configure_logging():
+def configure_logging() -> None:
     """Configure logging for both Lambda and local execution."""
 
     root = logging.getLogger()
@@ -47,7 +48,7 @@ def configure_logging():
             handlers=[logging.StreamHandler()]
         )
 
-def raise_error(error_type, error_msg):
+def raise_error(error_type: type[Exception], error_msg: str) -> None:
     """Log an error message and raise it as the given exception type.
 
     Args:
@@ -61,7 +62,7 @@ def raise_error(error_type, error_msg):
     raise error_type(error_msg)
 
 @lru_cache(maxsize=1)
-def get_params():
+def get_params() -> dict[str, str]:
     """Retrieve and cache AWS SSM parameters for NASA API and email configuration.
 
     Fetches configuration values from AWS Parameter Store and caches the result
@@ -99,7 +100,7 @@ def get_params():
 
     return params
 
-def retry_delay(response, attempt):
+def retry_delay(response: requests.Response | None, attempt: int) -> int:
     """Calculate the delay time for retrying an API request.
 
     Args:
@@ -120,7 +121,7 @@ def retry_delay(response, attempt):
                 pass
     return 2 ** attempt
 
-def get_api_response(url, api_key, max_retries=5):
+def get_api_response(url: str, api_key: str, max_retries: int = 5) -> requests.Response:
     """Make an HTTP GET request to the NASA API with retry logic.
 
     Args:
@@ -178,7 +179,7 @@ def get_api_response(url, api_key, max_retries=5):
     error_msg = f"No API request attempted (max_retries={max_retries})"
     raise_error(RuntimeError, error_msg)
 
-def get_img_url(nasa_data):
+def get_img_url(nasa_data: dict[str, Any]) -> Optional[str]:
     """Return the image or thumbnail URL for a NASA media item.
 
     Args:
@@ -204,7 +205,7 @@ def get_img_url(nasa_data):
     # If the media_type is other, return None
     return None
 
-def detect_subtype(content, content_type):
+def detect_subtype(content: bytes, content_type: str) -> Optional[str]:
     """Determine the image subtype from the HTTP content type or file signature.
 
     Args:
@@ -246,7 +247,7 @@ def detect_subtype(content, content_type):
     logging.info("Determined content type: None")
     return None
 
-def get_img(url):
+def get_img(url: Optional[str]) -> tuple[Optional[bytes], Optional[str]]:
     """Download the image identified by a NASA API response.
 
     Args:
@@ -275,7 +276,12 @@ def get_img(url):
     logging.info("Image received (%s, %d bytes)", subtype, len(img_response.content))
     return img_response.content, subtype
 
-def send_email(nasa_data, img_bytes, subtype, params):
+def send_email(
+    nasa_data: dict[str, Any],
+    img_bytes: Optional[bytes],
+    subtype: Optional[str],
+    params: dict[str, str],
+) -> None:
     """Send an email with NASA APOD data and image through Gmail SMTP.
 
     Args:
