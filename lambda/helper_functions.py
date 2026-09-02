@@ -125,9 +125,9 @@ def get_api_response(url: str, api_key: str, max_retries: int = 5) -> requests.R
     """Make an HTTP GET request to the NASA API with retry logic.
 
     Args:
-        url (str): The API endpoint URL to query.
-        api_key (str): The API key for authentication.
-        max_retries (int, optional): Maximum number of retry attempts. Defaults to 5.
+        url: The API endpoint URL to query.
+        api_key: The API key for authentication.
+        max_retries: Maximum number of retry attempts. Defaults to 5.
 
     Returns:
         requests.Response: The HTTP response object on successful request.
@@ -179,7 +179,7 @@ def get_api_response(url: str, api_key: str, max_retries: int = 5) -> requests.R
     error_msg = f"No API request attempted (max_retries={max_retries})"
     raise_error(RuntimeError, error_msg)
 
-def get_img_url(nasa_data: dict[str, Any]) -> Optional[str]:
+def get_img_url(nasa_data: dict[str, Any]) -> str | None:
     """Return the image or thumbnail URL for a NASA media item.
 
     Args:
@@ -205,7 +205,7 @@ def get_img_url(nasa_data: dict[str, Any]) -> Optional[str]:
     # If the media_type is other, return None
     return None
 
-def detect_subtype(content: bytes, content_type: str) -> Optional[str]:
+def detect_subtype(content: bytes, content_type: str) -> str | None:
     """Determine the image subtype from the HTTP content type or file signature.
 
     Args:
@@ -247,7 +247,7 @@ def detect_subtype(content: bytes, content_type: str) -> Optional[str]:
     logging.info("Determined content type: None")
     return None
 
-def get_img(url: Optional[str]) -> tuple[Optional[bytes], Optional[str]]:
+def get_img(url: str | None) -> tuple[bytes | None, str | None]:
     """Download the image identified by a NASA API response.
 
     Args:
@@ -278,8 +278,8 @@ def get_img(url: Optional[str]) -> tuple[Optional[bytes], Optional[str]]:
 
 def send_email(
     nasa_data: dict[str, Any],
-    img_bytes: Optional[bytes],
-    subtype: Optional[str],
+    img_bytes: bytes | None,
+    subtype: str | None,
     params: dict[str, str],
 ) -> None:
     """Send an email with NASA APOD data and image through Gmail SMTP.
