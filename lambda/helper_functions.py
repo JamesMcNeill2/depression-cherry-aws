@@ -336,7 +336,9 @@ def send_email(nasa_data, img_bytes, subtype, params):
 
     # Define and format the data needed for the email
     msg = EmailMessage()
-    msg["Subject"] = f"{formatted_date}: {title}"
+    env_name = os.environ.get("ENV_NAME", "Local")
+    subject_prefix = "" if env_name == "Prod" else f"[{env_name}] "
+    msg["Subject"] = f"{subject_prefix}{formatted_date}: {title}"
     msg["From"] = params["email-from"]
     msg["To"] = params["email-to"]
 
