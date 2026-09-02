@@ -30,7 +30,7 @@ import boto3
 import requests
 
 
-def configure_logging() -> NoReturn:
+def configure_logging() -> None:
     """Configure logging for both Lambda and local execution."""
 
     root = logging.getLogger()
@@ -48,7 +48,7 @@ def configure_logging() -> NoReturn:
             handlers=[logging.StreamHandler()]
         )
 
-def raise_error(error_type: type[Exception], error_msg: str) -> None:
+def raise_error(error_type: type[Exception], error_msg: str) -> NoReturn:
     """Log an error message and raise it as the given exception type.
 
     Args:
