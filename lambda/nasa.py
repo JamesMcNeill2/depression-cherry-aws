@@ -27,5 +27,5 @@ def lambda_handler(event, context):
 
     return {"status": "sent", "date": nasa_data.get("date")}
 
-if __name__ =="__main__":
-    lambda_handler({},{})
+if __name__ == "__main__":
+    lambda_handler({}, {})

@@ -16,20 +16,21 @@ checking that downloaded media is a supported image type before embedding it,
 and sending a formatted HTML email through Gmail SMTP with an inline image when
 available.
 """
-
 import html
 import logging
+import os
 import smtplib
 import time
 from datetime import datetime
 from email.message import EmailMessage
 from functools import lru_cache
+from typing import Any, NoReturn
 
 import boto3
 import requests
 
 
-def configure_logging():
+def configure_logging() -> None:
     """Configure logging for both Lambda and local execution."""
 
     root = logging.getLogger()
@@ -47,12 +48,12 @@ def configure_logging():
             handlers=[logging.StreamHandler()]
         )
 
-def raise_error(error_type, error_msg):
+def raise_error(error_type: type[Exception], error_msg: str) -> NoReturn:
     """Log an error message and raise it as the given exception type.
 
     Args:
         error_type: Exception class to raise (e.g. ``ValueError``).
-        message: Error message to log and attach to the exception.
+        error_msg: Error message to log and attach to the exception.
 
     Raises:
         error_type: Always.
@@ -61,7 +62,7 @@ def raise_error(error_type, error_msg):
     raise error_type(error_msg)
 
 @lru_cache(maxsize=1)
-def get_params():
+def get_params() -> dict[str, str]:
     """Retrieve and cache AWS SSM parameters for NASA API and email configuration.
 
     Fetches configuration values from AWS Parameter Store and caches the result
@@ -77,9 +78,10 @@ def get_params():
     logging.info("Getting parameters from SSM")
     ssm = boto3.client("ssm")
     # Queries AWS Parameter Store for parameters
+    prefix = os.environ.get("PARAM_PREFIX", "/depression-cherry/shared")
     param_names = ("nasa-api-key", "gmail-password", "email-from", "email-to")
     response = ssm.get_parameters(
-        Names=[f"/depression-cherry/shared/{name}" for name in param_names],
+        Names=[f"{prefix}/{name}" for name in param_names],
         WithDecryption=True
     )
 
@@ -98,7 +100,7 @@ def get_params():
 
     return params
 
-def retry_delay(response, attempt):
+def retry_delay(response: requests.Response | None, attempt: int) -> int:
     """Calculate the delay time for retrying an API request.
 
     Args:
@@ -119,13 +121,13 @@ def retry_delay(response, attempt):
                 pass
     return 2 ** attempt
 
-def get_api_response(url, api_key, max_retries=5):
+def get_api_response(url: str, api_key: str, max_retries: int = 5) -> requests.Response:
     """Make an HTTP GET request to the NASA API with retry logic.
 
     Args:
-        url (str): The API endpoint URL to query.
-        api_key (str): The API key for authentication.
-        max_retries (int, optional): Maximum number of retry attempts. Defaults to 5.
+        url: The API endpoint URL to query.
+        api_key: The API key for authentication.
+        max_retries: Maximum number of retry attempts. Defaults to 5.
 
     Returns:
         requests.Response: The HTTP response object on successful request.
@@ -177,7 +179,7 @@ def get_api_response(url, api_key, max_retries=5):
     error_msg = f"No API request attempted (max_retries={max_retries})"
     raise_error(RuntimeError, error_msg)
 
-def get_img_url(nasa_data):
+def get_img_url(nasa_data: dict[str, Any]) -> str | None:
     """Return the image or thumbnail URL for a NASA media item.
 
     Args:
@@ -197,13 +199,13 @@ def get_img_url(nasa_data):
 
     # If the media_type is video, return thumbnail image's url
     if media_type == "video":
-        logging.info("APOD is an video")
+        logging.info("APOD is a video")
         return nasa_data.get("thumbnail_url")
 
     # If the media_type is other, return None
     return None
 
-def detect_subtype(content, content_type):
+def detect_subtype(content: bytes, content_type: str) -> str | None:
     """Determine the image subtype from the HTTP content type or file signature.
 
     Args:
@@ -245,7 +247,7 @@ def detect_subtype(content, content_type):
     logging.info("Determined content type: None")
     return None
 
-def get_img(url):
+def get_img(url: str | None) -> tuple[bytes | None, str | None]:
     """Download the image identified by a NASA API response.
 
     Args:
@@ -274,14 +276,19 @@ def get_img(url):
     logging.info("Image received (%s, %d bytes)", subtype, len(img_response.content))
     return img_response.content, subtype
 
-def send_email(nasa_data, img_bytes, subtype, params):
+def send_email(
+    nasa_data: dict[str, Any],
+    img_bytes: bytes | None,
+    subtype: str | None,
+    params: dict[str, str],
+) -> None:
     """Send an email with NASA APOD data and image through Gmail SMTP.
 
     Args:
         nasa_data: Dictionary containing NASA APOD data (title, explanation, url, date, media_type).
         img_bytes: Binary image data to embed in the email, or None.
         subtype: Image subtype (e.g., 'jpeg', 'png'), or None.
-        params: Dictionary containing email configuration (email-from, email-to).
+        params: Dictionary containing email configuration (email-from, email-to, gmail-password).
     """
     # Define the colours used in the email
     bg = "#0a0a0a"
@@ -335,7 +342,9 @@ def send_email(nasa_data, img_bytes, subtype, params):
 
     # Define and format the data needed for the email
     msg = EmailMessage()
-    msg["Subject"] = f"{formatted_date}: {title}"
+    env_name = os.environ.get("ENV_NAME", "Local")
+    subject_prefix = "" if env_name == "Prod" else f"[{env_name}] "
+    msg["Subject"] = f"{subject_prefix}{formatted_date}: {title}"
     msg["From"] = params["email-from"]
     msg["To"] = params["email-to"]
 
