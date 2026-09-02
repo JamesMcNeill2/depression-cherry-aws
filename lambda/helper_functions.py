@@ -52,7 +52,7 @@ def raise_error(error_type, error_msg):
 
     Args:
         error_type: Exception class to raise (e.g. ``ValueError``).
-        message: Error message to log and attach to the exception.
+        error_msg: Error message to log and attach to the exception.
 
     Raises:
         error_type: Always.
