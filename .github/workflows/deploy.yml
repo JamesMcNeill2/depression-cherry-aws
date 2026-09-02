@@ -31,7 +31,7 @@ jobs:
       
       - name: Ruff Ruff
         run: |
-          pip install ruff
+          pip install ruff==0.16.5
           ruff check .
       
       - name: Setup Node
