@@ -24,13 +24,13 @@ import time
 from datetime import datetime
 from email.message import EmailMessage
 from functools import lru_cache
-from typing import Any
+from typing import Any, NoReturn
 
 import boto3
 import requests
 
 
-def configure_logging() -> None:
+def configure_logging() -> NoReturn:
     """Configure logging for both Lambda and local execution."""
 
     root = logging.getLogger()
