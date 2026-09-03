@@ -3,7 +3,8 @@ from config import configure_logging, get_params
 from mailer import create_msg, send_email
 
 # Defines the Nasa API URL
-URL = "https://api.nasa.gov/planetary/apod"
+# APOD = Astronomy Picture of the Day
+APOD_URL = "https://api.nasa.gov/planetary/apod"
 
 def lambda_handler(event, context):
 
@@ -12,8 +13,7 @@ def lambda_handler(event, context):
     params = get_params()
 
     # Fetches today's NASA APOD data
-    # APOD = Astronomy Picture of the Day
-    nasa_data = get_api_response(URL, params["nasa-api-key"]).json()
+    nasa_data = get_api_response(APOD_URL, params["nasa-api-key"]).json()
 
     img_bytes, subtype = get_img(get_img_url(nasa_data))
 
