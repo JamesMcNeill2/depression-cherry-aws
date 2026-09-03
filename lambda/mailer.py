@@ -177,7 +177,7 @@ def create_msg(
 
     return msg
 
-def send_email(params: dict[str, str], msg: EmailMessage) -> None:
+def send_email(msg: EmailMessage, params: dict[str, str]) -> None:
     """Send an already composed email through the configured Gmail SMTP server."""
 
     # Connect securely to Gmail, authenticate, and send the email
