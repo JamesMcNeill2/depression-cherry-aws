@@ -163,7 +163,8 @@ def get_img(url: str | None) -> tuple[bytes | None, str | None]:
         url: URL of the image to download.
 
     Returns:
-        tuple: Downloaded image content (bytes) and subtype (str), or (None, None) on failure.
+        tuple: Downloaded image content (bytes) and subtype (str),
+        or (None, None) when no usable image exists.
     """
     # Check if a url has been passed in
     if not url:
