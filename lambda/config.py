@@ -13,6 +13,7 @@ import os
 from functools import lru_cache
 
 import boto3
+from botocore import ClientError
 from errors import raise_error
 
 
@@ -53,10 +54,14 @@ def get_params() -> dict[str, str]:
     # Queries AWS Parameter Store for parameters
     prefix = os.environ.get("PARAM_PREFIX", "/depression-cherry/shared")
     param_names = ("nasa-api-key", "gmail-password", "email-from", "email-to")
-    response = ssm.get_parameters(
-        Names=[f"{prefix}/{name}" for name in param_names],
-        WithDecryption=True
-    )
+
+    try:
+        response = ssm.get_parameters(
+            Names=[f"{prefix}/{name}" for name in param_names],
+            WithDecryption=True
+        )
+    except ClientError as exc:
+        raise_error(RuntimeError, f"Could not read SSM parameters under {prefix}: {exc}")
 
     # Throw an error if one of the parameters hasn't been returned
     if response["InvalidParameters"]:
