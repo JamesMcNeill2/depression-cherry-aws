@@ -1,8 +1,11 @@
 """NASA APOD API access and image retrieval.
 
 Fetches entries from api.nasa.gov, retrying transient failures with exponential
-backoff. Handles both image and video entries; on video days the API returns
-an embed URL, so the thumbnail is used instead, where one is available.
+backoff. Supports both image and video media types; for videos, the API may
+return an embed URL, so the thumbnail is used when available.
+
+The module validates response codes, downloads supported image payloads, and
+normalizes the detected image subtype before returning the result.
 """
 import logging
 import time
