@@ -53,9 +53,10 @@ def build_media_html(
 
     # Add the copyright holder to the email if there is one
     if copyright_holder:
+        credit_style = f"font-family:{THEME['sans']}; font-size:12px; color:{THEME['muted']};"
         media_html += (
-            f'<p style="margin:8px 0 0 0; font-family:{THEME['sans']}; '
-            f'font-size:12px; color:{THEME['muted']};">{html.escape(copyright_holder)}</p>'
+            f'<p style="margin:8px 0 0 0; {credit_style}">'
+            f'{html.escape(copyright_holder)}</p>'
         )
 
     return media_html
