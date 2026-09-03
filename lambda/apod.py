@@ -12,27 +12,6 @@ import requests
 from errors import raise_error
 
 
-def retry_delay(response: requests.Response | None, attempt: int) -> int:
-    """Calculate the delay time for retrying an API request.
-
-    Args:
-        response: The HTTP response object or None if request failed.
-        attempt: The current attempt number (0-indexed).
-
-    Returns:
-        int: The number of seconds to wait before retrying, based on the
-            Retry-After header if present, otherwise exponential backoff.
-    """
-    if response is not None:
-        retry_after = response.headers.get("Retry-After")
-        if retry_after:
-            try:
-                return max(0, int(retry_after))
-            except ValueError:
-                # Retry-After may be an HTTP-date rather than seconds
-                pass
-    return 2 ** attempt
-
 def build_api_params(api_key: str) -> dict[str, str]:
     """Build the query parameters for the APOD endpoint.
 
@@ -66,6 +45,27 @@ def attempt_request(
         return response, f"{status_code} response"
 
     return response, None
+
+def retry_delay(response: requests.Response | None, attempt: int) -> int:
+    """Calculate the delay time for retrying an API request.
+
+    Args:
+        response: The HTTP response object or None if request failed.
+        attempt: The current attempt number (0-indexed).
+
+    Returns:
+        int: The number of seconds to wait before retrying, based on the
+            Retry-After header if present, otherwise exponential backoff.
+    """
+    if response is not None:
+        retry_after = response.headers.get("Retry-After")
+        if retry_after:
+            try:
+                return max(0, int(retry_after))
+            except ValueError:
+                # Retry-After may be an HTTP-date rather than seconds
+                pass
+    return 2 ** attempt
 
 def get_api_response(url: str, params: dict[str, str], max_retries: int = 5) -> requests.Response:
     """Fetch a NASA APOD response, retrying transient failures.
