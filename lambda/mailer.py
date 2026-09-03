@@ -18,15 +18,16 @@ THEME = {
     "sans": "Helvetica,Arial,sans-serif",
     "serif": "Georgia,'Times New Roman',serif",
 }
+# CID = Content ID
+CID = "nasa_image"
+LINK_STYLE = f"color:{THEME['link']}; text-decoration:none;"
 
 def build_media_html(
     img_bytes: bytes | None,
     subtype: str | None,
-    cid: str,
     safe_title: str,
     is_video: bool,
     safe_url: str,
-    link_style: str,
     copyright_holder: str,
 ) -> str:
     """Build the media section of the HTML email body."""
@@ -38,17 +39,17 @@ def build_media_html(
     p_style = f"font-family:{THEME['sans']}; font-size:14px;"
 
     if img_bytes and subtype:
-        media_html = f'<img src="cid:{cid}" alt="{safe_title}" style="{img_style}">'
+        media_html = f'<img src="cid:{CID}" alt="{safe_title}" style="{img_style}">'
         if is_video:
             media_html += (
                 f'<p style="margin:12px 0 0 0; {p_style}">'
-                f'<a href="{safe_url}" style="{link_style}">&#9654; Watch the video</a></p>'
+                f'<a href="{safe_url}" style="{LINK_STYLE}">&#9654; Watch the video</a></p>'
             )
     else:
         label = "Watch the video" if is_video else "View on NASA"
         media_html = (
             f'<p style="margin:0; {p_style}">'
-            f'<a href="{safe_url}" style="{link_style}">{label}</a></p>'
+            f'<a href="{safe_url}" style="{LINK_STYLE}">{label}</a></p>'
         )
 
     # Add the copyright holder to the email if there is one
@@ -147,8 +148,6 @@ def create_msg(
         logging.warning("Image too large to attach (%d bytes), linking instead", len(img_bytes))
         img_bytes, subtype = None, None
 
-    # CID = Content ID
-    cid = "nasa_image"
     safe_url = html.escape(source_url, quote=True)
     safe_title = html.escape(title, quote=True)
 
@@ -165,8 +164,8 @@ def create_msg(
     msg.set_content(f"{title}{copyright_text}\n\n{source_url}\n\nExplanation\n\n{explanation}")
 
     link_style = f"color:{THEME['link']}; text-decoration:none;"
-    media_html = build_media_html(img_bytes, subtype, cid, safe_title, is_video, safe_url,
-                                    link_style, copyright_holder)
+    media_html = build_media_html(img_bytes, subtype, safe_title, is_video, safe_url,
+                                    copyright_holder)
     html_body = render_html_body(safe_title, formatted_date, media_html,
                                 explanation, safe_url, link_style)
     msg.add_alternative(html_body, subtype="html")
@@ -174,7 +173,7 @@ def create_msg(
     # Add the HTML body and attach the image inline using its CID
     if img_bytes and subtype:
         html_part = msg.get_payload()[-1]
-        html_part.add_related(img_bytes, maintype="image", subtype=subtype, cid=f"<{cid}>")
+        html_part.add_related(img_bytes, maintype="image", subtype=subtype, cid=f"<{CID}>")
 
     return msg
 
