@@ -200,9 +200,13 @@ def get_img(url: str | None) -> tuple[bytes | None, str | None]:
         logging.info("No image url")
         return None, None
 
-    logging.info("Getting image")
-    img_response = requests.get(url, timeout=30)
-    img_response.raise_for_status()
+    try:
+        logging.info("Getting image")
+        img_response = requests.get(url, timeout=30)
+        img_response.raise_for_status()
+    except requests.RequestException as exc:
+        logging.warning("Image download failed (%s), sending without it", exc)
+        return None, None
 
     # Verify the payload is a supported image type before attempting to embed it.
     # Some NASA responses may be HTML, JSON, or a non-image binary payload even
