@@ -19,6 +19,70 @@ THEME = {
     "serif": "Georgia,'Times New Roman',serif",
 }
 
+def render_html_body(
+    safe_title: str,
+    formatted_date: str,
+    media_html: str,
+    explanation: str,
+    safe_url: str,
+    link_style: str,
+) -> str:
+    html_body = f"""\
+    <html>
+    <body style="margin:0; padding:0; background-color:{THEME['bg']};">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+            style="background-color:{THEME['bg']}; padding:24px 12px;">
+        <tr>
+            <td align="center">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                    style="max-width:600px; background-color:{THEME['card']}; border-radius:8px;
+                    overflow:hidden; border:1px solid {THEME['border']};">
+                <tr>
+                <td style="padding:28px 28px 8px 28px;">
+                    <p style="margin:0 0 6px 0; font-family:{THEME['sans']};
+                            font-size:12px; letter-spacing:1.5px; text-transform:uppercase;
+                            color:{THEME['muted']};">
+                    Astronomy Picture of the Day
+                    </p>
+                    <h1 style="margin:0 0 4px 0; font-family:{THEME['serif']};
+                            font-size:26px; line-height:1.25; color:{THEME['heading']};
+                            font-weight:normal;">
+                    {safe_title}
+                    </h1>
+                    <p style="margin:0; font-family:{THEME['sans']};
+                            font-size:13px; color:{THEME['muted']};">
+                    {formatted_date}
+                    </p>
+                </td>
+                </tr>
+                <tr>
+                <td style="padding:20px 28px;">
+                    {media_html}
+                </td>
+                </tr>
+                <tr>
+                <td style="padding:0 28px 28px 28px;">
+                    <p style="margin:0; font-family:{THEME['serif']};
+                            font-size:16px; line-height:1.65; color:{THEME['body_text']};">
+                    {html.escape(explanation)}
+                    </p>
+                    <p style="margin:24px 0 0 0; font-family:{THEME['sans']};
+                            font-size:13px;">
+                    <a href="{safe_url}" style="{link_style}">
+                        View on NASA &rarr;
+                    </a>
+                    </p>
+                </td>
+                </tr>
+            </table>
+            </td>
+        </tr>
+        </table>
+    </body>
+    </html>
+    """
+    return html_body
+
 def send_email(
     nasa_data: dict[str, Any],
     img_bytes: bytes | None,
@@ -93,60 +157,8 @@ def send_email(
     copyright_text = f"\n\n{copyright_holder}" if copyright_holder else ""
     msg.set_content(f"{title}{copyright_text}\n\n{source_url}\n\nExplanation\n\n{explanation}")
 
-    html_body = f"""\
-    <html>
-    <body style="margin:0; padding:0; background-color:{THEME['bg']};">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-            style="background-color:{THEME['bg']}; padding:24px 12px;">
-        <tr>
-            <td align="center">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-                    style="max-width:600px; background-color:{THEME['card']}; border-radius:8px;
-                    overflow:hidden; border:1px solid {THEME['border']};">
-                <tr>
-                <td style="padding:28px 28px 8px 28px;">
-                    <p style="margin:0 0 6px 0; font-family:{THEME['sans']};
-                            font-size:12px; letter-spacing:1.5px; text-transform:uppercase;
-                            color:{THEME['muted']};">
-                    Astronomy Picture of the Day
-                    </p>
-                    <h1 style="margin:0 0 4px 0; font-family:{THEME['serif']};
-                            font-size:26px; line-height:1.25; color:{THEME['heading']};
-                            font-weight:normal;">
-                    {safe_title}
-                    </h1>
-                    <p style="margin:0; font-family:{THEME['sans']};
-                            font-size:13px; color:{THEME['muted']};">
-                    {formatted_date}
-                    </p>
-                </td>
-                </tr>
-                <tr>
-                <td style="padding:20px 28px;">
-                    {media_html}
-                </td>
-                </tr>
-                <tr>
-                <td style="padding:0 28px 28px 28px;">
-                    <p style="margin:0; font-family:{THEME['serif']};
-                            font-size:16px; line-height:1.65; color:{THEME['body_text']};">
-                    {html.escape(explanation)}
-                    </p>
-                    <p style="margin:24px 0 0 0; font-family:{THEME['sans']};
-                            font-size:13px;">
-                    <a href="{safe_url}" style="{link_style}">
-                        View on NASA &rarr;
-                    </a>
-                    </p>
-                </td>
-                </tr>
-            </table>
-            </td>
-        </tr>
-        </table>
-    </body>
-    </html>
-    """
+    html_body = render_html_body(safe_title, formatted_date, media_html,
+                                explanation, safe_url, link_style)
     msg.add_alternative(html_body, subtype="html")
 
     # Add the HTML body and attach the image inline using its CID
@@ -158,5 +170,5 @@ def send_email(
     with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as server:
         logging.info("Sending email")
         server.login(params["email-from"], params["gmail-password"])
-        server.send_message(msg)
+        # server.send_message(msg)
         logging.info("Email sent")
