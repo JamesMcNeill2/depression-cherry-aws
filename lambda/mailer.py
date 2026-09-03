@@ -21,6 +21,7 @@ THEME = {
 # CID = Content ID
 CID = "nasa_image"
 LINK_STYLE = f"color:{THEME['link']}; text-decoration:none;"
+MAX_ATTACHMENT_BYTES = 18 * 1024 * 1024
 
 def build_media_html(
     img_bytes: bytes | None,
@@ -142,8 +143,7 @@ def create_msg(
     is_video = nasa_data.get("media_type") == "video"
 
     # Drop oversized images rather than failing at the SMTP layer
-    max_attachment_bytes = 18 * 1024 * 1024
-    if img_bytes and len(img_bytes) > max_attachment_bytes:
+    if img_bytes and len(img_bytes) > MAX_ATTACHMENT_BYTES:
         logging.warning("Image too large to attach (%d bytes), linking instead", len(img_bytes))
         img_bytes, subtype = None, None
 
