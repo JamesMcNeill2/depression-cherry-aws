@@ -29,11 +29,11 @@ def build_media_html(
     link_style: str,
     copyright_holder: str | None,
 ) -> str:
+    """Build the media section of the HTML email body."""
 
     # If a usable image is available, embed it inline in the email using a CID so the
     # HTML can render it without attaching a separate file; otherwise, fall back to a
     # direct link for videos or the original NASA page.
-
     img_style = "display:block; width:100%; height:auto; border-radius:4px;"
     p_style = f"font-family:{THEME['sans']}; font-size:14px;"
 
@@ -58,6 +58,8 @@ def build_media_html(
             f'font-size:12px; color:{THEME['muted']};">{html.escape(copyright_holder)}</p>'
         )
 
+    return media_html
+
 def render_html_body(
     safe_title: str,
     formatted_date: str,
@@ -66,6 +68,8 @@ def render_html_body(
     safe_url: str,
     link_style: str,
 ) -> str:
+    """Render the full HTML email body for the APOD message."""
+
     html_body = f"""\
     <html>
     <body style="margin:0; padding:0; background-color:{THEME['bg']};">
@@ -128,6 +132,8 @@ def create_msg(
     subtype: str | None,
     params: dict[str, str],
 ) -> EmailMessage:
+    """Build the email message for the APOD content and optional inline image."""
+
     # Extract and format info from nasa_data
     title, explanation, source_url = nasa_data["title"], nasa_data["explanation"], nasa_data["url"]
     formatted_date = datetime.strptime(nasa_data["date"], "%Y-%m-%d").strftime("%d %B %Y")
@@ -172,6 +178,8 @@ def create_msg(
     return msg
 
 def send_email(params: dict[str, str], msg: EmailMessage) -> None:
+    """Send an already composed email through the configured Gmail SMTP server."""
+
     # Connect securely to Gmail, authenticate, and send the email
     with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as server:
         logging.info("Sending email")
