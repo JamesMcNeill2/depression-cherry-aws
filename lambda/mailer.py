@@ -27,7 +27,7 @@ def build_media_html(
     is_video: bool,
     safe_url: str,
     link_style: str,
-    copyright_holder: str | None,
+    copyright_holder: str,
 ) -> str:
     """Build the media section of the HTML email body."""
 
