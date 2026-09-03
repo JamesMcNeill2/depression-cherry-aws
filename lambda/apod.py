@@ -88,9 +88,6 @@ def get_api_response(url: str, api_key: str, max_retries: int = 5) -> requests.R
         logging.warning("NASA API: %s. Retrying in %ds", reason, wait)
         time.sleep(wait)
 
-    error_msg = f"No API request attempted (max_retries={max_retries})"
-    raise_error(RuntimeError, error_msg)
-
 def get_img_url(nasa_data: dict[str, Any]) -> str | None:
     """Return the image or thumbnail URL for a NASA media item.
 
@@ -166,7 +163,8 @@ def get_img(url: str | None) -> tuple[bytes | None, str | None]:
         url: URL of the image to download.
 
     Returns:
-        tuple: Downloaded image content (bytes) and subtype (str), or (None, None) on failure.
+        tuple: Downloaded image content (bytes) and subtype (str),
+        or (None, None) when no usable image exists.
     """
     # Check if a url has been passed in
     if not url:
