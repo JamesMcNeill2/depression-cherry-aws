@@ -285,7 +285,8 @@ def send_email(
     """Send an email with NASA APOD data and image through Gmail SMTP.
 
     Args:
-        nasa_data: Dictionary containing NASA APOD data (title, explanation, url, date, media_type).
+        nasa_data: Dictionary containing NASA APOD data (title, explanation, url, date,
+        media_type, copyright).
         img_bytes: Binary image data to embed in the email, or None.
         subtype: Image subtype (e.g., 'jpeg', 'png'), or None.
         params: Dictionary containing email configuration (email-from, email-to, gmail-password).
@@ -302,6 +303,7 @@ def send_email(
     # Extract and format info from nasa_data
     title, explanation, source_url = nasa_data["title"], nasa_data["explanation"], nasa_data["url"]
     formatted_date = datetime.strptime(nasa_data["date"], "%Y-%m-%d").strftime("%d %B %Y")
+    copyright_holder = " ".join((nasa_data.get("copyright") or "").split())
     is_video = nasa_data.get("media_type") == "video"
 
     # Drop oversized images rather than failing at the SMTP layer
@@ -340,6 +342,13 @@ def send_email(
             f'<a href="{safe_url}" style="{link_style}">{label}</a></p>'
         )
 
+    # Add the copyright holder to the email if there is one
+    if copyright_holder:
+        media_html += (
+            f'<p style="margin:8px 0 0 0; font-family:{sans}; '
+            f'font-size:12px; color:{muted};">{html.escape(copyright_holder)}</p>'
+        )
+
     # Define and format the data needed for the email
     msg = EmailMessage()
     env_name = os.environ.get("ENV_NAME", "Local")
@@ -349,7 +358,8 @@ def send_email(
     msg["To"] = params["email-to"]
 
     # Plain-text part first, for clients that won't render HTML
-    msg.set_content(f"{title}\n\n{source_url}\n\nExplanation\n\n{explanation}")
+    copyright_text = f"\n\n{copyright_holder}" if copyright_holder else ""
+    msg.set_content(f"{title}{copyright_text}\n\n{source_url}\n\nExplanation\n\n{explanation}")
 
     html_body = f"""\
     <html>
