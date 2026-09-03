@@ -1,3 +1,9 @@
+"""NASA APOD API access and image retrieval.
+
+Fetches entries from api.nasa.gov, retrying transient failures with exponential
+backoff. Handles both image and video entries — on video days the API returns
+an embed URL, so the thumbnail is used instead, where one is available.
+"""
 import logging
 import time
 from typing import Any

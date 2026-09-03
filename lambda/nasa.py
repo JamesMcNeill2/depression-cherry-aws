@@ -1,3 +1,5 @@
+"""Lambda entry point for the daily NASA APOD email."""
+
 from apod import get_api_response, get_img, get_img_url
 from config import configure_logging, get_params
 from mailer import create_msg, send_email

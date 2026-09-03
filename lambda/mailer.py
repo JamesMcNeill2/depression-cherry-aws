@@ -1,3 +1,11 @@
+"""Email composition and delivery for APOD entries.
+
+Builds a table-based HTML email with the image embedded inline via CID, falling
+back to a link when no usable image exists. Tables rather than divs because
+Outlook renders with Word's HTML engine; styles are inline because email clients
+don't load external stylesheets.
+"""
+
 import html
 import logging
 import os
@@ -31,7 +39,19 @@ def build_media_html(
     safe_url: str,
     copyright_holder: str,
 ) -> str:
-    """Build the media section of the HTML email body."""
+    """Build the media section of the HTML email body.
+
+    Args:
+        img_bytes: Optional image bytes to embed inline as a CID.
+        subtype: Optional MIME subtype for the image, such as "jpeg" or "png".
+        safe_title: Escaped title used as the image alt text.
+        is_video: Whether the APOD item is a video.
+        safe_url: Escaped URL to the source media page.
+        copyright_holder: Copyright attribution to add beneath the media.
+
+    Returns:
+        A fragment of HTML describing the media block and optional credit.
+    """
 
     # If a usable image is available, embed it inline in the email using a CID so the
     # HTML can render it without attaching a separate file; otherwise, fall back to a
@@ -70,7 +90,18 @@ def render_html_body(
     explanation: str,
     safe_url: str,
 ) -> str:
-    """Render the full HTML email body for the APOD message."""
+    """Render the full HTML email body for the APOD message.
+
+    Args:
+        safe_title: Escaped title text to display in the email heading.
+        formatted_date: Human-readable APOD date string, such as "01 January 2024".
+        media_html: HTML fragment for the media block and optional credit/call-to-action.
+        explanation: APOD explanation text to render in the main body copy.
+        safe_url: Escaped NASA source URL for the email footer link.
+
+    Returns:
+        A complete HTML email body string for the APOD message.
+    """
 
     html_body = f"""\
     <html>
@@ -134,7 +165,18 @@ def create_msg(
     subtype: str | None,
     params: dict[str, str],
 ) -> EmailMessage:
-    """Build the email message for the APOD content and optional inline image."""
+    """Build the email message for the APOD content and optional inline image.
+
+    Args:
+        nasa_data: APOD payload dictionary containing the title, explanation, URL,
+            date, and optional copyright/media information.
+        img_bytes: Optional image bytes to embed inline as a CID in the HTML body.
+        subtype: Optional image MIME subtype such as "jpeg" or "png".
+        params: Email metadata including the sender address and destination.
+
+    Returns:
+        An EmailMessage object containing the plain-text and HTML multipart email.
+    """
 
     # Extract and format info from nasa_data
     title, explanation, source_url = nasa_data["title"], nasa_data["explanation"], nasa_data["url"]
@@ -178,7 +220,15 @@ def create_msg(
     return msg
 
 def send_email(msg: EmailMessage, params: dict[str, str]) -> None:
-    """Send an already composed email through the configured Gmail SMTP server."""
+    """Send an already composed email through the configured Gmail SMTP server.
+
+    Args:
+        msg: The email message object to send.
+        params: Email delivery settings, including the sender address and Gmail password.
+
+    Returns:
+        None. The function sends the message via SMTP and does not return a value.
+    """
 
     # Connect securely to Gmail, authenticate, and send the email
     with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as server:

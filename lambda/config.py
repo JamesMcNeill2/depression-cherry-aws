@@ -1,3 +1,13 @@
+"""Configuration and logging setup.
+
+Values are loaded from AWS Systems Manager Parameter Store under the namespace
+given by PARAM_PREFIX. No `.env` files are read at runtime; boto3 resolves
+credentials from the execution role in Lambda and the local AWS profile
+otherwise.
+
+Expected parameter names: nasa-api-key, gmail-password, email-from, email-to.
+"""
+
 import logging
 import os
 from functools import lru_cache
