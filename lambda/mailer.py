@@ -162,10 +162,12 @@ def create_msg(
     copyright_text = f"\n\n{copyright_holder}" if copyright_holder else ""
     msg.set_content(f"{title}{copyright_text}\n\n{source_url}\n\nExplanation\n\n{explanation}")
 
-    media_html = build_media_html(img_bytes, subtype, safe_title, is_video, safe_url,
-                                    copyright_holder)
-    html_body = render_html_body(safe_title, formatted_date, media_html,
-                                explanation, safe_url)
+    media_html = build_media_html(
+        img_bytes, subtype, safe_title, is_video, safe_url, copyright_holder
+    )
+    html_body = render_html_body(
+        safe_title, formatted_date, media_html, explanation, safe_url
+    )
     msg.add_alternative(html_body, subtype="html")
 
     # Add the HTML body and attach the image inline using its CID
