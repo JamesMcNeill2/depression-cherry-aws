@@ -49,7 +49,8 @@ def get_params() -> dict[str, str]:
             email-from, email-to.
 
     Raises:
-        ValueError: If any required SSM parameter is missing or inaccessible.
+        RuntimeError: If the SSM request itself fails.
+        ValueError: If any required parameter is missing from the response.
     """
     logging.info("Getting parameters from SSM")
     ssm = boto3.client("ssm")
