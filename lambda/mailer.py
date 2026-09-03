@@ -19,6 +19,45 @@ THEME = {
     "serif": "Georgia,'Times New Roman',serif",
 }
 
+def build_media_html(
+    img_bytes: bytes | None,
+    subtype: str | None,
+    cid: str,
+    safe_title: str,
+    is_video: bool,
+    safe_url: str,
+    link_style: str,
+    copyright_holder: str | None,
+) -> str:
+
+    # If a usable image is available, embed it inline in the email using a CID so the
+    # HTML can render it without attaching a separate file; otherwise, fall back to a
+    # direct link for videos or the original NASA page.
+
+    img_style = "display:block; width:100%; height:auto; border-radius:4px;"
+    p_style = f"font-family:{THEME['sans']}; font-size:14px;"
+
+    if img_bytes and subtype:
+        media_html = f'<img src="cid:{cid}" alt="{safe_title}" style="{img_style}">'
+        if is_video:
+            media_html += (
+                f'<p style="margin:12px 0 0 0; {p_style}">'
+                f'<a href="{safe_url}" style="{link_style}">&#9654; Watch the video</a></p>'
+            )
+    else:
+        label = "Watch the video" if is_video else "View on NASA"
+        media_html = (
+            f'<p style="margin:0; {p_style}">'
+            f'<a href="{safe_url}" style="{link_style}">{label}</a></p>'
+        )
+
+    # Add the copyright holder to the email if there is one
+    if copyright_holder:
+        media_html += (
+            f'<p style="margin:8px 0 0 0; font-family:{THEME['sans']}; '
+            f'font-size:12px; color:{THEME['muted']};">{html.escape(copyright_holder)}</p>'
+        )
+
 def render_html_body(
     safe_title: str,
     formatted_date: str,
@@ -113,37 +152,7 @@ def send_email(
     # CID = Content ID
     cid = "nasa_image"
     safe_url = html.escape(source_url, quote=True)
-
-    # Fonts and shared styles for the email body
-    img_style = "display:block; width:100%; height:auto; border-radius:4px;"
-    link_style = f"color:{THEME['link']}; text-decoration:none;"
-    p_style = f"font-family:{THEME['sans']}; font-size:14px;"
-
     safe_title = html.escape(title, quote=True)
-
-    # If a usable image is available, embed it inline in the email using a CID so the
-    # HTML can render it without attaching a separate file; otherwise, fall back to a
-    # direct link for videos or the original NASA page.
-    if img_bytes and subtype:
-        media_html = f'<img src="cid:{cid}" alt="{safe_title}" style="{img_style}">'
-        if is_video:
-            media_html += (
-                f'<p style="margin:12px 0 0 0; {p_style}">'
-                f'<a href="{safe_url}" style="{link_style}">&#9654; Watch the video</a></p>'
-            )
-    else:
-        label = "Watch the video" if is_video else "View on NASA"
-        media_html = (
-            f'<p style="margin:0; {p_style}">'
-            f'<a href="{safe_url}" style="{link_style}">{label}</a></p>'
-        )
-
-    # Add the copyright holder to the email if there is one
-    if copyright_holder:
-        media_html += (
-            f'<p style="margin:8px 0 0 0; font-family:{THEME['sans']}; '
-            f'font-size:12px; color:{THEME['muted']};">{html.escape(copyright_holder)}</p>'
-        )
 
     # Define and format the data needed for the email
     msg = EmailMessage()
@@ -157,6 +166,9 @@ def send_email(
     copyright_text = f"\n\n{copyright_holder}" if copyright_holder else ""
     msg.set_content(f"{title}{copyright_text}\n\n{source_url}\n\nExplanation\n\n{explanation}")
 
+    link_style = f"color:{THEME['link']}; text-decoration:none;"
+    media_html = build_media_html(img_bytes, subtype, cid, safe_title, is_video, safe_url,
+                                    link_style, copyright_holder)
     html_body = render_html_body(safe_title, formatted_date, media_html,
                                 explanation, safe_url, link_style)
     msg.add_alternative(html_body, subtype="html")
@@ -170,5 +182,5 @@ def send_email(
     with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as server:
         logging.info("Sending email")
         server.login(params["email-from"], params["gmail-password"])
-        # server.send_message(msg)
+        server.send_message(msg)
         logging.info("Email sent")
