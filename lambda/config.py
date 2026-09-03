@@ -13,7 +13,7 @@ import os
 from functools import lru_cache
 
 import boto3
-from botocore import ClientError
+from botocore.exceptions import ClientError
 from errors import raise_error
 
 PREFIX = os.environ.get("PARAM_PREFIX", "/depression-cherry/shared")
