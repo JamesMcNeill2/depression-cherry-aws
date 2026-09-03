@@ -40,14 +40,33 @@ def build_api_params(api_key: str) -> dict[str, str]:
     """
     return {"api_key": api_key, "thumbs": "true"}
 
+def attempt_request(
+    url: str, params: dict[str, str]
+) -> tuple[requests.Response | None, str | None]:
+    """Submit a request to the API endpoint and classify transient errors.
 
     Args:
-        url: The API endpoint URL to query.
-        api_key: The API key for authentication.
-        max_retries: Maximum number of retry attempts. Defaults to 5.
+        url: NASA API endpoint URL.
+        params: Query string parameters for the request.
 
     Returns:
-        requests.Response: The HTTP response object on successful request.
+        A (response, reason) pair. ``reason`` is None when the response should
+        be returned to the caller; otherwise it describes why a retry is needed.
+        ``response`` is None only when no response was received at all.
+    """
+    try:
+        # Call the api and retrieve status code
+        response = requests.get(url, params=params, timeout=10)
+        status_code = response.status_code
+    # Handle no response received
+    except requests.RequestException as exc:
+        return None, f"Failed request ({exc})"
+
+    if status_code in (429, 500, 502, 503, 504):
+        return response, f"{status_code} response"
+
+    return response, None
+
 
     Raises:
         ValueError: If max_retries is less than 1.
