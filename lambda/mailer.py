@@ -6,6 +6,18 @@ from datetime import datetime
 from email.message import EmailMessage
 from typing import Any
 
+# Define the colours and styles used by the email
+THEME = {
+    "bg": "#0a0a0a",
+    "card": "#161616",
+    "heading": "#f5f5f5",
+    "body_text": "#c4c4c4",
+    "muted": "#8a8a8a",
+    "link": "#d4d4d4",
+    "border": "#2a2a2a",
+    "sans": "Helvetica,Arial,sans-serif",
+    "serif": "Georgia,'Times New Roman',serif",
+}
 
 def send_email(
     nasa_data: dict[str, Any],
@@ -22,15 +34,6 @@ def send_email(
         subtype: Image subtype (e.g., 'jpeg', 'png'), or None.
         params: Dictionary containing email configuration (email-from, email-to, gmail-password).
     """
-    # Define the colours used in the email
-    bg = "#0a0a0a"
-    card = "#161616"
-    heading = "#f5f5f5"
-    body_text = "#c4c4c4"
-    muted = "#8a8a8a"
-    link = "#d4d4d4"
-    border = "#2a2a2a"
-
     # Extract and format info from nasa_data
     title, explanation, source_url = nasa_data["title"], nasa_data["explanation"], nasa_data["url"]
     formatted_date = datetime.strptime(nasa_data["date"], "%Y-%m-%d").strftime("%d %B %Y")
@@ -48,11 +51,9 @@ def send_email(
     safe_url = html.escape(source_url, quote=True)
 
     # Fonts and shared styles for the email body
-    sans = "Helvetica,Arial,sans-serif"
-    serif = "Georgia,'Times New Roman',serif"
     img_style = "display:block; width:100%; height:auto; border-radius:4px;"
-    link_style = f"color:{link}; text-decoration:none;"
-    p_style = f"font-family:{sans}; font-size:14px;"
+    link_style = f"color:{THEME['link']}; text-decoration:none;"
+    p_style = f"font-family:{THEME['sans']}; font-size:14px;"
 
     safe_title = html.escape(title, quote=True)
 
@@ -76,8 +77,8 @@ def send_email(
     # Add the copyright holder to the email if there is one
     if copyright_holder:
         media_html += (
-            f'<p style="margin:8px 0 0 0; font-family:{sans}; '
-            f'font-size:12px; color:{muted};">{html.escape(copyright_holder)}</p>'
+            f'<p style="margin:8px 0 0 0; font-family:{THEME['sans']}; '
+            f'font-size:12px; color:{THEME['muted']};">{html.escape(copyright_holder)}</p>'
         )
 
     # Define and format the data needed for the email
@@ -94,27 +95,28 @@ def send_email(
 
     html_body = f"""\
     <html>
-    <body style="margin:0; padding:0; background-color:{bg};">
+    <body style="margin:0; padding:0; background-color:{THEME['bg']};">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-            style="background-color:{bg}; padding:24px 12px;">
+            style="background-color:{THEME['bg']}; padding:24px 12px;">
         <tr>
             <td align="center">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-                    style="max-width:600px; background-color:{card}; border-radius:8px;
-                    overflow:hidden; border:1px solid {border};">
+                    style="max-width:600px; background-color:{THEME['card']}; border-radius:8px;
+                    overflow:hidden; border:1px solid {THEME['border']};">
                 <tr>
                 <td style="padding:28px 28px 8px 28px;">
-                    <p style="margin:0 0 6px 0; font-family:{sans};
+                    <p style="margin:0 0 6px 0; font-family:{THEME['sans']};
                             font-size:12px; letter-spacing:1.5px; text-transform:uppercase;
-                            color:{muted};">
+                            color:{THEME['muted']};">
                     Astronomy Picture of the Day
                     </p>
-                    <h1 style="margin:0 0 4px 0; font-family:{serif};
-                            font-size:26px; line-height:1.25; color:{heading}; font-weight:normal;">
+                    <h1 style="margin:0 0 4px 0; font-family:{THEME['serif']};
+                            font-size:26px; line-height:1.25; color:{THEME['heading']};
+                            font-weight:normal;">
                     {safe_title}
                     </h1>
-                    <p style="margin:0; font-family:{sans};
-                            font-size:13px; color:{muted};">
+                    <p style="margin:0; font-family:{THEME['sans']};
+                            font-size:13px; color:{THEME['muted']};">
                     {formatted_date}
                     </p>
                 </td>
@@ -126,11 +128,11 @@ def send_email(
                 </tr>
                 <tr>
                 <td style="padding:0 28px 28px 28px;">
-                    <p style="margin:0; font-family:{serif};
-                            font-size:16px; line-height:1.65; color:{body_text};">
+                    <p style="margin:0; font-family:{THEME['serif']};
+                            font-size:16px; line-height:1.65; color:{THEME['body_text']};">
                     {html.escape(explanation)}
                     </p>
-                    <p style="margin:24px 0 0 0; font-family:{sans};
+                    <p style="margin:24px 0 0 0; font-family:{THEME['sans']};
                             font-size:13px;">
                     <a href="{safe_url}" style="{link_style}">
                         View on NASA &rarr;
