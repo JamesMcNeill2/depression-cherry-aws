@@ -122,21 +122,12 @@ def render_html_body(
     """
     return html_body
 
-def send_email(
+def create_msg(
     nasa_data: dict[str, Any],
     img_bytes: bytes | None,
     subtype: str | None,
     params: dict[str, str],
-) -> None:
-    """Send an email with NASA APOD data and image through Gmail SMTP.
-
-    Args:
-        nasa_data: Dictionary containing NASA APOD data (title, explanation, url, date,
-        media_type, copyright).
-        img_bytes: Binary image data to embed in the email, or None.
-        subtype: Image subtype (e.g., 'jpeg', 'png'), or None.
-        params: Dictionary containing email configuration (email-from, email-to, gmail-password).
-    """
+) -> EmailMessage:
     # Extract and format info from nasa_data
     title, explanation, source_url = nasa_data["title"], nasa_data["explanation"], nasa_data["url"]
     formatted_date = datetime.strptime(nasa_data["date"], "%Y-%m-%d").strftime("%d %B %Y")
@@ -178,6 +169,9 @@ def send_email(
         html_part = msg.get_payload()[-1]
         html_part.add_related(img_bytes, maintype="image", subtype=subtype, cid=f"<{cid}>")
 
+    return msg
+
+def send_email(params: dict[str, str], msg: EmailMessage) -> None:
     # Connect securely to Gmail, authenticate, and send the email
     with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as server:
         logging.info("Sending email")

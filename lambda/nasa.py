@@ -1,6 +1,6 @@
 from apod import get_api_response, get_img, get_img_url
 from config import configure_logging, get_params
-from mailer import send_email
+from mailer import create_msg, send_email
 
 # Defines the Nasa API URL
 URL = "https://api.nasa.gov/planetary/apod"
@@ -18,7 +18,8 @@ def lambda_handler(event, context):
     img_bytes, subtype = get_img(get_img_url(nasa_data))
 
     # Emails the title, photo and description
-    send_email(nasa_data, img_bytes, subtype, params)
+    msg = create_msg(nasa_data, img_bytes, subtype, params)
+    send_email(params, msg)
 
     return {"status": "sent", "date": nasa_data.get("date")}
 
