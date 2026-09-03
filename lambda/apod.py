@@ -33,8 +33,13 @@ def retry_delay(response: requests.Response | None, attempt: int) -> int:
                 pass
     return 2 ** attempt
 
-def get_api_response(url: str, api_key: str, max_retries: int = 5) -> requests.Response:
-    """Make an HTTP GET request to the NASA API with retry logic.
+def build_api_params(api_key: str) -> dict[str, str]:
+    """Build the query parameters for the APOD endpoint.
+
+    ``thumbs=true`` adds a ``thumbnail_url`` field on video days.
+    """
+    return {"api_key": api_key, "thumbs": "true"}
+
 
     Args:
         url: The API endpoint URL to query.
