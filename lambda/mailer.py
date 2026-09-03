@@ -68,7 +68,6 @@ def render_html_body(
     media_html: str,
     explanation: str,
     safe_url: str,
-    link_style: str,
 ) -> str:
     """Render the full HTML email body for the APOD message."""
 
@@ -113,7 +112,7 @@ def render_html_body(
                     </p>
                     <p style="margin:24px 0 0 0; font-family:{THEME['sans']};
                             font-size:13px;">
-                    <a href="{safe_url}" style="{link_style}">
+                    <a href="{safe_url}" style="{LINK_STYLE}">
                         View on NASA &rarr;
                     </a>
                     </p>
@@ -163,11 +162,10 @@ def create_msg(
     copyright_text = f"\n\n{copyright_holder}" if copyright_holder else ""
     msg.set_content(f"{title}{copyright_text}\n\n{source_url}\n\nExplanation\n\n{explanation}")
 
-    link_style = f"color:{THEME['link']}; text-decoration:none;"
     media_html = build_media_html(img_bytes, subtype, safe_title, is_video, safe_url,
                                     copyright_holder)
     html_body = render_html_body(safe_title, formatted_date, media_html,
-                                explanation, safe_url, link_style)
+                                explanation, safe_url)
     msg.add_alternative(html_body, subtype="html")
 
     # Add the HTML body and attach the image inline using its CID
