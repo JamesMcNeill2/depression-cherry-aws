@@ -1,11 +1,6 @@
-from helper_functions import (
-    configure_logging,
-    get_api_response,
-    get_img,
-    get_img_url,
-    get_params,
-    send_email,
-)
+from apod import get_api_response, get_img, get_img_url
+from config import configure_logging, get_params
+from mailer import send_email
 
 # Defines the Nasa API URL
 URL = "https://api.nasa.gov/planetary/apod"

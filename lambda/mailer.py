@@ -1,0 +1,160 @@
+import html
+import logging
+import os
+import smtplib
+from datetime import datetime
+from email.message import EmailMessage
+from typing import Any
+
+
+def send_email(
+    nasa_data: dict[str, Any],
+    img_bytes: bytes | None,
+    subtype: str | None,
+    params: dict[str, str],
+) -> None:
+    """Send an email with NASA APOD data and image through Gmail SMTP.
+
+    Args:
+        nasa_data: Dictionary containing NASA APOD data (title, explanation, url, date,
+        media_type, copyright).
+        img_bytes: Binary image data to embed in the email, or None.
+        subtype: Image subtype (e.g., 'jpeg', 'png'), or None.
+        params: Dictionary containing email configuration (email-from, email-to, gmail-password).
+    """
+    # Define the colours used in the email
+    bg = "#0a0a0a"
+    card = "#161616"
+    heading = "#f5f5f5"
+    body_text = "#c4c4c4"
+    muted = "#8a8a8a"
+    link = "#d4d4d4"
+    border = "#2a2a2a"
+
+    # Extract and format info from nasa_data
+    title, explanation, source_url = nasa_data["title"], nasa_data["explanation"], nasa_data["url"]
+    formatted_date = datetime.strptime(nasa_data["date"], "%Y-%m-%d").strftime("%d %B %Y")
+    copyright_holder = " ".join((nasa_data.get("copyright") or "").split())
+    is_video = nasa_data.get("media_type") == "video"
+
+    # Drop oversized images rather than failing at the SMTP layer
+    max_attachment_bytes = 18 * 1024 * 1024
+    if img_bytes and len(img_bytes) > max_attachment_bytes:
+        logging.warning("Image too large to attach (%d bytes), linking instead", len(img_bytes))
+        img_bytes, subtype = None, None
+
+    # CID = Content ID
+    cid = "nasa_image"
+    safe_url = html.escape(source_url, quote=True)
+
+    # Fonts and shared styles for the email body
+    sans = "Helvetica,Arial,sans-serif"
+    serif = "Georgia,'Times New Roman',serif"
+    img_style = "display:block; width:100%; height:auto; border-radius:4px;"
+    link_style = f"color:{link}; text-decoration:none;"
+    p_style = f"font-family:{sans}; font-size:14px;"
+
+    safe_title = html.escape(title, quote=True)
+
+    # If a usable image is available, embed it inline in the email using a CID so the
+    # HTML can render it without attaching a separate file; otherwise, fall back to a
+    # direct link for videos or the original NASA page.
+    if img_bytes and subtype:
+        media_html = f'<img src="cid:{cid}" alt="{safe_title}" style="{img_style}">'
+        if is_video:
+            media_html += (
+                f'<p style="margin:12px 0 0 0; {p_style}">'
+                f'<a href="{safe_url}" style="{link_style}">&#9654; Watch the video</a></p>'
+            )
+    else:
+        label = "Watch the video" if is_video else "View on NASA"
+        media_html = (
+            f'<p style="margin:0; {p_style}">'
+            f'<a href="{safe_url}" style="{link_style}">{label}</a></p>'
+        )
+
+    # Add the copyright holder to the email if there is one
+    if copyright_holder:
+        media_html += (
+            f'<p style="margin:8px 0 0 0; font-family:{sans}; '
+            f'font-size:12px; color:{muted};">{html.escape(copyright_holder)}</p>'
+        )
+
+    # Define and format the data needed for the email
+    msg = EmailMessage()
+    env_name = os.environ.get("ENV_NAME", "Local")
+    subject_prefix = "" if env_name == "Prod" else f"[{env_name}] "
+    msg["Subject"] = f"{subject_prefix}{formatted_date}: {title}"
+    msg["From"] = params["email-from"]
+    msg["To"] = params["email-to"]
+
+    # Plain-text part first, for clients that won't render HTML
+    copyright_text = f"\n\n{copyright_holder}" if copyright_holder else ""
+    msg.set_content(f"{title}{copyright_text}\n\n{source_url}\n\nExplanation\n\n{explanation}")
+
+    html_body = f"""\
+    <html>
+    <body style="margin:0; padding:0; background-color:{bg};">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+            style="background-color:{bg}; padding:24px 12px;">
+        <tr>
+            <td align="center">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                    style="max-width:600px; background-color:{card}; border-radius:8px;
+                    overflow:hidden; border:1px solid {border};">
+                <tr>
+                <td style="padding:28px 28px 8px 28px;">
+                    <p style="margin:0 0 6px 0; font-family:{sans};
+                            font-size:12px; letter-spacing:1.5px; text-transform:uppercase;
+                            color:{muted};">
+                    Astronomy Picture of the Day
+                    </p>
+                    <h1 style="margin:0 0 4px 0; font-family:{serif};
+                            font-size:26px; line-height:1.25; color:{heading}; font-weight:normal;">
+                    {safe_title}
+                    </h1>
+                    <p style="margin:0; font-family:{sans};
+                            font-size:13px; color:{muted};">
+                    {formatted_date}
+                    </p>
+                </td>
+                </tr>
+                <tr>
+                <td style="padding:20px 28px;">
+                    {media_html}
+                </td>
+                </tr>
+                <tr>
+                <td style="padding:0 28px 28px 28px;">
+                    <p style="margin:0; font-family:{serif};
+                            font-size:16px; line-height:1.65; color:{body_text};">
+                    {html.escape(explanation)}
+                    </p>
+                    <p style="margin:24px 0 0 0; font-family:{sans};
+                            font-size:13px;">
+                    <a href="{safe_url}" style="{link_style}">
+                        View on NASA &rarr;
+                    </a>
+                    </p>
+                </td>
+                </tr>
+            </table>
+            </td>
+        </tr>
+        </table>
+    </body>
+    </html>
+    """
+    msg.add_alternative(html_body, subtype="html")
+
+    # Add the HTML body and attach the image inline using its CID
+    if img_bytes and subtype:
+        html_part = msg.get_payload()[-1]
+        html_part.add_related(img_bytes, maintype="image", subtype=subtype, cid=f"<{cid}>")
+
+    # Connect securely to Gmail, authenticate, and send the email
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as server:
+        logging.info("Sending email")
+        server.login(params["email-from"], params["gmail-password"])
+        server.send_message(msg)
+        logging.info("Email sent")
