@@ -16,6 +16,8 @@ import boto3
 from botocore import ClientError
 from errors import raise_error
 
+PREFIX = os.environ.get("PARAM_PREFIX", "/depression-cherry/shared")
+PARAM_NAMES = ("nasa-api-key", "gmail-password", "email-from", "email-to")
 
 def configure_logging() -> None:
     """Configure logging for both Lambda and local execution."""
@@ -52,16 +54,13 @@ def get_params() -> dict[str, str]:
     logging.info("Getting parameters from SSM")
     ssm = boto3.client("ssm")
     # Queries AWS Parameter Store for parameters
-    prefix = os.environ.get("PARAM_PREFIX", "/depression-cherry/shared")
-    param_names = ("nasa-api-key", "gmail-password", "email-from", "email-to")
-
     try:
         response = ssm.get_parameters(
-            Names=[f"{prefix}/{name}" for name in param_names],
+            Names=[f"{PREFIX}/{name}" for name in PARAM_NAMES],
             WithDecryption=True
         )
     except ClientError as exc:
-        raise_error(RuntimeError, f"Could not read SSM parameters under {prefix}: {exc}")
+        raise_error(RuntimeError, f"Could not read SSM parameters under {PREFIX}: {exc}")
 
     # Throw an error if one of the parameters hasn't been returned
     if response["InvalidParameters"]:
