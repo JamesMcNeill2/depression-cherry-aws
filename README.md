@@ -181,7 +181,7 @@ curl -s -H "X-Api-Key: $(aws ssm get-parameter \
   "https://api.nasa.gov/planetary/apod?thumbs=true&date=2026-09-04"
 ```
 
-On Git Bash for Windows, prefix the aws call with MSYS_NO_PATHCONV=1, or it rewrites the leading / in the parameter path into a Windows path.
+On Git Bash for Windows, prefix the `aws` call with `MSYS_NO_PATHCONV=1`, or it rewrites the leading `/` in the parameter path into a Windows path.
 
 Swap `&date=YYYY-MM-DD` for `&start_date=YYYY-MM-DD&end_date=YYYY-MM-DD` to fetch a range of entries. The two forms
 are mutually exclusive; the API rejects a request carrying both. Entries where
