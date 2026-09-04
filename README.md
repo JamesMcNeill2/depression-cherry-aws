@@ -24,11 +24,12 @@ On days when APOD features a video rather than an image, the email uses the vide
 Key files. Not exhaustive.
 
 ```text
-app.py                                    CDK entry point; derives the stack name from the branch
-cdk.json                                  CDK app configuration
-pyproject.toml                            Ruff configuration
+.github/workflows/
+  deploy.yml                              Lint, synthesise, deploy on push
+  destroy-feature.yml                     Tear down a feature stack when its branch is deleted
 depression_cherry_aws/
   depression_cherry_aws_stack.py          Lambda, log group, SSM grants, scheduler
+docs/                                     Screenshots used by this README
 lambda/
   nasa.py                                 Handler
   apod.py                                 NASA API access and image retrieval
@@ -36,10 +37,9 @@ lambda/
   config.py                               Parameter Store lookup and logging setup
   errors.py                               Shared log-and-raise helper
   requirements.txt                        Runtime dependencies (vendored into the package)
-.github/workflows/
-  deploy.yml                              Lint, synthesise, deploy on push
-  destroy-feature.yml                     Tear down a feature stack when its branch is deleted
-docs/                                     Screenshots used by this README
+app.py                                    CDK entry point; derives the stack name from the branch
+cdk.json                                  CDK app configuration
+pyproject.toml                            Ruff configuration
 requirements.txt                          CDK dependencies
 requirements-dev.txt                      Everything needed to work on the project
 ```
