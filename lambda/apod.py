@@ -14,6 +14,7 @@ from typing import Any
 import requests
 from errors import raise_error
 
+RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
 
 def build_api_params(api_key: str) -> dict[str, str]:
     """Build the query parameters for the APOD endpoint.
@@ -44,7 +45,7 @@ def attempt_request(
     except requests.RequestException as exc:
         return None, f"Failed request ({exc})"
 
-    if status_code in (429, 500, 502, 503, 504):
+    if status_code in RETRYABLE_STATUS:
         return response, f"{status_code} response"
 
     return response, None
