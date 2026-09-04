@@ -84,7 +84,7 @@ no new parameters. The trade-off is that changing a value affects every environm
 including the next production run; editing `email-to` to redirect a test also redirects
 tomorrow morning's real email.
 
-That is deliberate here. There is one NASA API key and one mailbox, both mine, so the
+That is deliberate here. There is one NASA API key and one mailbox used, so the
 isolation a per-environment namespace would buy has nothing to isolate. `PARAM_PREFIX`
 stays configurable so that splitting them later is a change to the stack's environment
 variables rather than to the Lambda code.
