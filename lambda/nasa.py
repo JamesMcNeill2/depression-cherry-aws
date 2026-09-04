@@ -1,6 +1,6 @@
 """Lambda entry point for the daily NASA APOD email."""
 
-from apod import get_api_response, get_img, get_img_url
+from apod import build_api_params, get_api_response, get_img, get_img_url
 from config import configure_logging, get_params
 from mailer import create_msg, send_email
 
@@ -15,7 +15,8 @@ def lambda_handler(event, context):
     params = get_params()
 
     # Fetches today's NASA APOD data
-    nasa_data = get_api_response(APOD_URL, params["nasa-api-key"]).json()
+    api_params = build_api_params(params["nasa-api-key"])
+    nasa_data = get_api_response(APOD_URL, api_params).json()
 
     img_bytes, subtype = get_img(get_img_url(nasa_data))
 
