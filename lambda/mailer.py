@@ -30,6 +30,10 @@ THEME = {
 # CID = Content ID
 CID = "nasa_image"
 LINK_STYLE = f"color:{THEME['link']}; text-decoration:none;"
+
+# Gmail rejects messages over 25MB inbound, and base64 inflates attachments
+# by roughly a third, so drop anything that would exceed that rather than
+# failing at send time.
 MAX_ATTACHMENT_BYTES = 18 * 1024 * 1024
 
 def build_media_html(
