@@ -13,6 +13,7 @@ class DepressionCherryAwsStack(Stack):
                  env_name: str, env_suffix: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
+        # Define the logs
         log_group = logs.LogGroup(
             self, "NasaLogGroup",
             retention=logs.RetentionDays.ONE_WEEK,
@@ -21,6 +22,7 @@ class DepressionCherryAwsStack(Stack):
 
         prefix = "/depression-cherry/shared"
 
+        # Define the lambda
         fn = _lambda.Function(
             self, "Nasa",
             function_name=f"Nasa-{env_suffix}",
@@ -35,6 +37,7 @@ class DepressionCherryAwsStack(Stack):
             log_group=log_group
             )
 
+        # Add SES permissions
         fn.add_to_role_policy(
             iam.PolicyStatement(
                 actions=["ses:SendRawEmail"],
@@ -42,12 +45,14 @@ class DepressionCherryAwsStack(Stack):
             )
         )
 
+        # Create SSM parameters
         for name in ["nasa-api-key", "gmail-password", "email-from", "email-to"]:
             ssm.StringParameter.from_secure_string_parameter_attributes(
                 self, f"Param{name.title().replace('-', '')}",
                 parameter_name=f"{prefix}/{name}"
             ).grant_read(fn)
 
+        # Only run scheduler on prod stack
         if env_suffix == "prod":
             scheduler_role = iam.Role(
                 self, "SchedulerInvokeRole",
@@ -55,6 +60,7 @@ class DepressionCherryAwsStack(Stack):
             )
             fn.grant_invoke(scheduler_role)
 
+            # Define the scheduler
             scheduler.CfnSchedule(
                 self, "DailyTrigger",
                 schedule_expression="cron(0 7 * * ? *)",   # 7am
