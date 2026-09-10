@@ -4,6 +4,10 @@ Builds a table-based HTML email with the image embedded inline via CID, falling
 back to a link when no usable image exists. Tables rather than divs because
 Outlook renders with Word's HTML engine; styles are inline because email clients
 don't load external stylesheets.
+
+Delivery is through Amazon SES. The message is serialised to raw MIME and
+submitted with send_raw_email, which preserves the inline image and the
+plain-text alternative.
 """
 
 import html
