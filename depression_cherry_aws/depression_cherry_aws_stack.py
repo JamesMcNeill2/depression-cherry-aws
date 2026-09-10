@@ -35,6 +35,13 @@ class DepressionCherryAwsStack(Stack):
             log_group=log_group
             )
 
+        fn.add_to_role_policy(
+            iam.PolicyStatement(
+                actions=["ses:SendRawEmail"],
+                resources=["*"]
+            )
+        )
+
         for name in ["nasa-api-key", "gmail-password", "email-from", "email-to"]:
             ssm.StringParameter.from_secure_string_parameter_attributes(
                 self, f"Param{name.title().replace('-', '')}",
