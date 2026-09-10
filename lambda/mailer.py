@@ -9,10 +9,11 @@ don't load external stylesheets.
 import html
 import logging
 import os
-import smtplib
 from datetime import datetime
 from email.message import EmailMessage
 from typing import Any
+
+import boto3
 
 # Define the colours and styles used by the email
 THEME = {
@@ -220,19 +221,22 @@ def create_msg(
     return msg
 
 def send_email(msg: EmailMessage, params: dict[str, str]) -> None:
-    """Send an already composed email through the configured Gmail SMTP server.
+    """Send an already composed email through Amazon Simple Email Service.
 
     Args:
         msg: The email message object to send.
-        params: Email delivery settings, including the sender address and Gmail password.
+        params: Email delivery settings, including the sender and recipient addresses.
 
     Returns:
         None. The function sends the message via SMTP and does not return a value.
     """
+    # Submit the raw message to Amazon SES for delivery.
+    logging.info("Sending email")
+    ses = boto3.client("ses")
+    ses.send_raw_email(
+        Source=params["email-from"],
+        Destinations=[params["email-to"]],
+        RawMessage={"Data": msg.as_bytes()},
+    )
+    logging.info("Email sent")
 
-    # Connect securely to Gmail, authenticate, and send the email
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as server:
-        logging.info("Sending email")
-        server.login(params["email-from"], params["gmail-password"])
-        server.send_message(msg)
-        logging.info("Email sent")
