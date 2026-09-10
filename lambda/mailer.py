@@ -185,7 +185,7 @@ def create_msg(
     copyright_holder = " ".join((nasa_data.get("copyright") or "").split())
     is_video = nasa_data.get("media_type") == "video"
 
-    # Drop oversized images rather than failing at the SMTP layer
+    # Drop oversized images rather than failing send time
     if img_bytes and len(img_bytes) > MAX_ATTACHMENT_BYTES:
         logging.warning("Image too large to attach (%d bytes), linking instead", len(img_bytes))
         img_bytes, subtype = None, None
@@ -226,9 +226,6 @@ def send_email(msg: EmailMessage, params: dict[str, str]) -> None:
     Args:
         msg: The email message object to send.
         params: Email delivery settings, including the sender and recipient addresses.
-
-    Returns:
-        None. The function sends the message via SMTP and does not return a value.
     """
     # Submit the raw message to Amazon SES for delivery.
     logging.info("Sending email")
