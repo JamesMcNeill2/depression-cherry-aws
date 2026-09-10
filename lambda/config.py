@@ -5,7 +5,7 @@ given by PARAM_PREFIX. No `.env` files are read at runtime; boto3 resolves
 credentials from the execution role in Lambda and the local AWS profile
 otherwise.
 
-Expected parameter names: nasa-api-key, gmail-password, email-from, email-to.
+Expected parameter names: nasa-api-key, email-from, email-to.
 """
 
 import logging
@@ -17,7 +17,7 @@ from botocore.exceptions import ClientError
 from errors import raise_error
 
 PREFIX = os.environ.get("PARAM_PREFIX", "/depression-cherry/shared")
-PARAM_NAMES = ("nasa-api-key", "gmail-password", "email-from", "email-to")
+PARAM_NAMES = ("nasa-api-key", "email-from", "email-to")
 
 def configure_logging() -> None:
     """Configure logging for both Lambda and local execution."""
@@ -45,8 +45,7 @@ def get_params() -> dict[str, str]:
     for the lifetime of the process to minimize API calls.
 
     Returns:
-        dict: Configuration dictionary with keys: nasa-api-key, gmail-password,
-            email-from, email-to.
+        dict: Configuration dictionary with keys: nasa-api-key, email-from, email-to.
 
     Raises:
         RuntimeError: If the SSM request itself fails.

@@ -46,7 +46,7 @@ class DepressionCherryAwsStack(Stack):
         )
 
         # Create SSM parameters
-        for name in ["nasa-api-key", "gmail-password", "email-from", "email-to"]:
+        for name in ["nasa-api-key", "email-from", "email-to"]:
             ssm.StringParameter.from_secure_string_parameter_attributes(
                 self, f"Param{name.title().replace('-', '')}",
                 parameter_name=f"{prefix}/{name}"
