@@ -12,10 +12,10 @@ Deployed with AWS CDK. Runs at 7am Europe/London. Gold star if you understand th
 
 ## How It Works
 
-1. EventBridge Scheduler invokes the production Lambda daily at 7am Europe/London.
+1. EventBridge Scheduler invokes the production Lambda daily at 07:00 Europe/London.
 2. The Lambda reads its configuration from AWS Systems Manager Parameter Store.
 3. It then fetches the day's APOD entry from `api.nasa.gov`, retrying transient failures with exponential backoff.
-4. Finally, it downloads the image, verifies the format from the Content-Type header or the file's magic bytes, and sends an HTML email through Gmail SMTP.
+4. Finally, it downloads the image, verifies the format from the Content-Type header or the file's magic bytes, and sends an HTML email through Amazon SES.
 
 On days when APOD features a video rather than an image, the email uses the video thumbnail and links through to the video. Where no usable image exists, or the download fails, it degrades to a link-only email rather than failing.
 
@@ -28,7 +28,7 @@ Key files. Not exhaustive.
   deploy.yml                              Lint, synthesise, deploy on push
   destroy-feature.yml                     Tear down a feature stack when its branch is deleted
 depression_cherry_aws/
-  depression_cherry_aws_stack.py          Lambda, log group, SSM grants, scheduler
+  depression_cherry_aws_stack.py          Lambda, log group, SSM grants, SES permissions, scheduler
 docs/                                     Screenshots used by this README
 lambda/
   nasa.py                                 Handler
@@ -42,6 +42,7 @@ cdk.json                                  CDK app configuration
 pyproject.toml                            Ruff configuration
 requirements.txt                          CDK dependencies
 requirements-dev.txt                      Everything needed to work on the project
+source.bat                                Activates .venv on Windows via `source .venv/bin/activate`
 ```
 
 ## Prerequisites
@@ -50,7 +51,7 @@ requirements-dev.txt                      Everything needed to work on the proje
 - Node.js 18 or later, for the CDK CLI: `npm install -g aws-cdk`
 - An AWS account, with credentials that can deploy CloudFormation stacks
 - A NASA API key from [api.nasa.gov](https://api.nasa.gov)
-- A Gmail account with 2-Step Verification enabled, for the app password
+- Sender and recipient email addresses verified in Amazon SES
 
 If the target account has never run CDK before, bootstrap it once:
 
@@ -58,11 +59,35 @@ If the target account has never run CDK before, bootstrap it once:
 cdk bootstrap aws://ACCOUNT_ID/eu-west-2
 ```
 
-### Gmail App Password
+### Verifying SES Identities
 
-Gmail rejects ordinary account passwords for SMTP, so the sender needs an app password. Enable 2-Step Verification on the account, then create one under [App passwords](https://myaccount.google.com/apppasswords). Google shows the sixteen-character value once; store it straight into Parameter Store as `gmail-password`.
+SES → Configuration → Verified identities → Create identity → Email address. AWS sends a
+confirmation link that must be clicked within 24 hours.
 
-App passwords do not expire but are invalidated if 2-Step Verification is turned off or the account password is reset, at which point the parameter needs updating by hand. Removing this rotation burden is one of the drivers for migrating to SES as described below.
+Identities are per-region, so verify in the same region the Lambda runs in — `eu-west-2`
+here. Verifying elsewhere will not help.
+
+New SES accounts are in the sandbox, which means both the sender and the recipient must be
+verified. That is no obstacle for a personal mailer, so there is no need to request
+production access.
+
+### A Note on Spam Filtering
+
+Sending from a free mailbox address, such as gmail.com, means DKIM will not align: SES
+signs with `amazonses.com` while the From header claims gmail.com. DMARC fails as a result,
+and Gmail is likely to file the message as spam, since an unauthenticated message claiming
+to come from gmail.com is exactly the shape of a phishing attempt.
+
+There is no fix from this side, because the DNS for that domain is not yours to change. Two
+options:
+
+- **A Gmail filter** matching the sender or the phrase "Astronomy Picture of the Day", with
+  *Never send it to Spam* ticked. Free, takes a moment, and is sufficient when you are the
+  only recipient.
+- **A domain you own.** Verify it in SES with Easy DKIM, add the three CNAME records, and
+  send from an address on that domain. DKIM then aligns and the problem goes away. No
+  mailbox is needed at that address — SES only needs to prove domain control. A domain
+  costs roughly £8 a year, and DNS hosting is free at Cloudflare.
 
 ## Configuration
 
@@ -71,9 +96,8 @@ All configuration lives in SSM Parameter Store as `SecureString` parameters. Not
 | Parameter | Purpose |
 | --- | --- |
 | `nasa-api-key` | API key from [api.nasa.gov](https://api.nasa.gov) |
-| `gmail-password` | Gmail app password for the sending account |
-| `email-from` | Sending address |
-| `email-to` | Recipient address |
+| `email-from` | Sending address, verified in SES |
+| `email-to` | Recipient address, verified in SES while in the sandbox |
 
 The namespace is set by the `PARAM_PREFIX` environment variable, which the CDK stack
 populates. It falls back to `/depression-cherry/shared` for local runs.
@@ -138,7 +162,7 @@ Install the dependencies:
 pip install -r requirements-dev.txt
 ```
 
-You need AWS credentials with `ssm:GetParameters` on the parameter path, and a region set. boto3 resolves credentials the same way locally as the execution role does in Lambda.
+You need AWS credentials with `ssm:GetParameters` on the parameter path and `ses:SendRawEmail`, plus a region set. boto3 resolves credentials the same way locally as the execution role does in Lambda.
 
 PowerShell:
 
@@ -213,23 +237,19 @@ ruff check .
 
 ## Costs
 
-Effectively nothing at this volume. The Lambda runs once a day well inside the free tier, standard-tier SSM parameters are free to store and read, and CloudWatch logs are retained for a week.
+Effectively nothing at this volume. The Lambda runs once a day well inside the free tier, SES charges $0.10 per thousand emails plus $0.12/GB for attachments, standard-tier SSM parameters are free to store and read, and CloudWatch logs are retained for a week. All in all, under a penny a month.
 
 ## Future Improvements
 
-### Move from Gmail SMTP to SES
-
-The current setup works but sits outside AWS: it needs a Gmail app password stored in Parameter Store, which has to be rotated manually, and Google can flag automated SMTP logins. SMTP is a hangover from a previous proof of concept repository that lived completely outside of AWS.
-
-SES would replace that with IAM permissions, removing a credential entirely. It also brings delivery metrics, bounce and complaint handling, and keeps the whole pipeline inside one ecosystem. Cost is negligible at this volume, roughly a penny a month once attachment charges are included. The main setup work is verifying a sending identity, and the sandbox restriction is not a problem for a personal mailer since the recipient is verified anyway.
-
-`create_msg` already returns a standard `EmailMessage`, so `send_email` is the only function that would change.
-
 ### Failure Alarm on the Production Lambda
 
-If the 7am run fails, the only signal is an email that does not arrive, which gets noticed eventually but not promptly. A CloudWatch alarm on the function's `Errors` metric, wired to an SNS topic, would turn that into a notification. This works because the handler deliberately lets exceptions propagate rather than catching them, so a failure is recorded as a failed invocation.
+If the 07:00 run fails, the only signal is an email that does not arrive, which gets noticed eventually but not promptly. A CloudWatch alarm on the function's `Errors` metric, wired to an SNS topic, would turn that into a notification. This works because the handler deliberately lets exceptions propagate rather than catching them, so a failure is recorded as a failed invocation.
 
 The harder case is the function never running at all, because the scheduler broke. That needs an alarm on `Invocations` falling below one over a 25 hour period, which is fiddlier to get right.
+
+### SES Event Notifications
+
+SES can publish bounce, complaint, and delivery events to SNS via a configuration set. That would replace "the email did not arrive" with an actual delivery record, and is one of the benefits of SES that this project does not yet use.
 
 ## License
 
