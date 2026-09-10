@@ -193,7 +193,7 @@ def create_msg(
     copyright_holder = " ".join((nasa_data.get("copyright") or "").split())
     is_video = nasa_data.get("media_type") == "video"
 
-    # Drop oversized images rather than failing send time
+    # Drop oversized images rather than failing at send time
     if img_bytes and len(img_bytes) > MAX_ATTACHMENT_BYTES:
         logging.warning("Image too large to attach (%d bytes), linking instead", len(img_bytes))
         img_bytes, subtype = None, None
