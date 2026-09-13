@@ -212,6 +212,11 @@ are mutually exclusive; the API rejects a request carrying both. Entries where
 `thumbnail_url` is empty are worth testing too, since the API returns the field without a
 value on some video days.
 
+`Invoke-RestMethod | ConvertTo-Json` wraps the result in `value` and `Count`. That is
+PowerShell serialising an array, not part of the response; `curl` returns a bare JSON array.
+Note also that `ConvertTo-Json` defaults to a depth of 2, which is enough here but will
+silently truncate nested structures if the shape ever changes — pass `-Depth 10` to be safe.
+
 ## Deployment
 
 Deployment is automatic. Pushing to `main`, `dev`, or any `feature/**` branch runs the deploy workflow, which lints, synthesises, and deploys that branch's stack.
@@ -240,6 +245,80 @@ ruff check .
 Effectively nothing at this volume. The Lambda runs once a day well inside the free tier, SES charges $0.10 per thousand emails plus $0.12/GB for attachments, standard-tier SSM parameters are free to store and read, and CloudWatch logs are retained for a week. All in all, under a penny a month.
 
 ## Future Improvements
+
+### Migrating to the New APOD API
+
+NASA is moving APOD off `api.nasa.gov` and onto the SMD plugin on `science.nasa.gov`. The
+new endpoint is live and serving current entries. The current API is deprecated on
+[1 December 2026](https://api.nasa.gov/), so this needs to land before then.
+
+Dates are the legacy `YYMMDD` form, not `YYYY-MM-DD`, and the path form is the one to use:
+
+```text
+https://science.nasa.gov/wp-json/wp/v2/apod-basic/260911                            single entry
+https://science.nasa.gov/wp-json/wp/v2/apod-basic?date_from=260901&date_to=260911   range
+```
+
+A bare request with no path segment returns the 25 most recent entries, newest first. A
+`date=` query parameter is silently ignored rather than rejected, so a request for a specific
+day comes back as that same 25-entry listing — which looks like a success, and whose first
+element happens to be the right entry most of the time. That is the failure mode to avoid:
+on a morning when the day's entry has not yet posted, the first element is yesterday's, and
+yesterday's picture goes out with nothing logged. The path form 404s instead, which the
+existing retry and error handling already deals with correctly.
+
+An `api_key` parameter is ignored too. The endpoint needs no authentication at all, so
+`nasa-api-key` can leave Parameter Store entirely, along with the header that carries it.
+
+The field names overlap with the current API just enough to be misleading. Checked against
+live data, the differences that matter:
+
+- **`url` is the article permalink; `hdurl` is the image.** This is the dangerous one.
+  `get_img_url` currently returns `url` on image days, which under the new API would hand an
+  HTML page to `get_img`. That fails gracefully — `detect_subtype` rejects it — so the
+  result is link-only emails every morning with nothing logged as an error.
+- **`hdurl` is a still frame on video days**, such as `xz_and_frame.jpg`. Every entry
+  therefore carries a usable image whatever its media type, `thumbs=true` becomes
+  unnecessary, and the `thumbnail_url` empty-string guard has nothing left to guard. This
+  simplifies `get_img_url` rather than complicating it.
+- **`copyright` is present on every entry**, duplicated as `credit`, contrary to NASA's own
+  documentation. The absent-copyright branch still needs keeping for the day that changes.
+- **`explanation` and `copyright` both contain HTML.** Escaping either renders literal
+  markup in the email. The explanation opens with a redundant `<strong>Explanation:</strong>`
+  prefix that duplicates the template's own heading, and closes with site furniture —
+  "Tomorrow's picture", and a notice about the move itself — that wants stripping. The
+  copyright field is often an `<a href>` wrapping the photographer's name, so the
+  whitespace-collapse needs tag handling too.
+- **`hdurl` carries resize parameters**, `?w=3828&h=3798&fit=clip&crop=faces%2Cfocalpoint`.
+  Requesting a sensible width instead would make the 18MB attachment ceiling largely
+  redundant. Note that the values are not always meaningful: one September entry arrived
+  with `?w=0&h=0`.
+- **`media_type` may have a third value.** NASA's guide mentions `iframe`, but across 25
+  consecutive live entries only `image` and `video` appear — including one entry whose page
+  embeds a YouTube `<iframe>` yet is still typed `video`. Treat `iframe` as unconfirmed.
+  Either way, current code returns `None` for anything unrecognised and degrades to a
+  link-only email.
+- **There is a new `alt` field**, NASA's own alt text for the image, which is better than
+  anything this project would generate and belongs on the `<img>` tag.
+- **Responses are considerably larger.** Each entry embeds `basic_html`, a complete HTML
+  rendering of the APOD page, alongside the fields above. A ten-day range runs to several
+  hundred kilobytes. Whether `?_fields=` trimming works here is worth testing before the
+  Lambda starts pulling the full payload every morning.
+
+The work itself is mostly confined to `apod.py`: change the base URL, drop the API key and
+`thumbs` parameter, and fix `get_img_url` to return `hdurl`. `mailer.py` needs the tag
+stripping. `retry_delay` and `RETRYABLE_STATUS` are unaffected in principle, though the new
+host is not behind api-umbrella, so the set of status codes actually seen in the wild may
+differ.
+
+The "Querying the API by Hand" section above will need rewriting once this lands, since the
+key-in-a-header dance stops being necessary.
+
+Before committing to any of this, re-verify against live data. NASA's published guide for
+the new endpoint has been marked a staging demo, and the shape it describes already differs
+from what the endpoint returns. The safest route is a feature stack pointed at the new
+endpoint, running alongside prod for a week or so, with the two emails compared by eye —
+including on a video day, which is the case most likely to break quietly.
 
 ### Failure Alarm on the Production Lambda
 
