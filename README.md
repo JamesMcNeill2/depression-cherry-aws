@@ -10,6 +10,11 @@ Deployed with AWS CDK. Runs at 7am Europe/London. Gold star if you understand th
     <img src="docs/depression-cherry-mobile.png" alt="Email Screenshot" width="300">
 </p>
 
+> **Status: paused.** The daily schedule is currently disabled. APOD is moving from
+> `apod.nasa.gov` to `science.nasa.gov`, and the current API no longer returns a usable
+> image link, so every email would arrive without its picture. This will be fixed as part
+> of migrating to the new APOD feed, planned for before 1 December 2026.
+
 ## How It Works
 
 1. EventBridge Scheduler invokes the production Lambda daily at 7am Europe/London.
@@ -104,7 +109,7 @@ The stack name and Lambda name are derived from the branch, so each branch gets 
 
 | Branch | Stack suffix | Scheduled |
 | --- | --- | --- |
-| `main` | `prod` | Yes |
+| `main` | `prod` | Yes (currently disabled) |
 | `dev` | `dev` | No |
 | `feature/*` | sanitised branch name | No |
 
