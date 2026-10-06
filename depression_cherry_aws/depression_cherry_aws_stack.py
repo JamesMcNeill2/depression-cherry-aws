@@ -5,6 +5,7 @@ from aws_cdk import aws_logs as logs
 from aws_cdk import aws_scheduler as scheduler
 from aws_cdk import aws_ssm as ssm
 from constructs import Construct
+from typing import cast
 
 
 class DepressionCherryAwsStack(Stack):
@@ -44,7 +45,7 @@ class DepressionCherryAwsStack(Stack):
         if env_suffix == "prod":
             scheduler_role = iam.Role(
                 self, "SchedulerInvokeRole",
-                assumed_by=iam.ServicePrincipal("scheduler.amazonaws.com")
+                assumed_by=iam.ServicePrincipal("scheduler.amazonaws.com"),    # pyright: ignore[reportArgumentType]
             )
             fn.grant_invoke(scheduler_role)
 
