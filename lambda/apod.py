@@ -7,6 +7,7 @@ return an embed URL, so the thumbnail is used when available.
 The module validates response codes, downloads supported image payloads, and
 normalizes the detected image subtype before returning the result.
 """
+
 import logging
 import time
 from typing import Any
@@ -16,12 +17,14 @@ from errors import raise_error
 
 RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
 
+
 def build_api_params(api_key: str) -> dict[str, str]:
     """Build the query parameters for the APOD endpoint.
 
     ``thumbs=true`` adds a ``thumbnail_url`` field on video days.
     """
     return {"api_key": api_key, "thumbs": "true"}
+
 
 def attempt_request(
     url: str, params: dict[str, str]
@@ -50,6 +53,7 @@ def attempt_request(
 
     return response, None
 
+
 def retry_delay(response: requests.Response | None, attempt: int) -> int:
     """Calculate the delay time for retrying an API request.
 
@@ -69,7 +73,8 @@ def retry_delay(response: requests.Response | None, attempt: int) -> int:
             except ValueError:
                 # Retry-After may be an HTTP-date rather than seconds
                 pass
-    return 2 ** attempt
+    return 2**attempt
+
 
 def get_api_response(url: str, params: dict[str, str], max_retries: int = 5) -> requests.Response:
     """Fetch a NASA APOD response, retrying transient failures.
@@ -118,6 +123,7 @@ def get_api_response(url: str, params: dict[str, str], max_retries: int = 5) -> 
 
     raise_error(RuntimeError, f"NASA API: {reason} after {max_retries}/{max_retries} attempts")
 
+
 def get_img_url(nasa_data: dict[str, Any]) -> str | None:
     """Return the image or thumbnail URL for a NASA media item.
 
@@ -143,6 +149,7 @@ def get_img_url(nasa_data: dict[str, Any]) -> str | None:
 
     # If the media_type is other, return None
     return None
+
 
 def detect_subtype(content: bytes, content_type: str) -> str | None:
     """Determine the image subtype from the HTTP content type or file signature.
@@ -173,7 +180,7 @@ def detect_subtype(content: bytes, content_type: str) -> str | None:
         (b"\xff\xd8\xff", "jpeg"),
         (b"\x89PNG\r\n\x1a\n", "png"),
         (b"GIF87a", "gif"),
-        (b"GIF89a", "gif")
+        (b"GIF89a", "gif"),
     )
 
     # Backup for missing content_type
@@ -185,6 +192,7 @@ def detect_subtype(content: bytes, content_type: str) -> str | None:
 
     logging.info("Determined content type: None")
     return None
+
 
 def get_img(url: str | None) -> tuple[bytes | None, str | None]:
     """Download the image identified by a NASA API response.
