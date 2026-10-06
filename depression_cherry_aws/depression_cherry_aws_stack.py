@@ -8,14 +8,15 @@ from constructs import Construct
 
 
 class DepressionCherryAwsStack(Stack):
-
-    def __init__(self, scope: Construct, construct_id: str,
-                 env_name: str, env_suffix: str, **kwargs) -> None:
+    def __init__(
+        self, scope: Construct, construct_id: str, env_name: str, env_suffix: str, **kwargs
+    ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         # Define the logs
         log_group = logs.LogGroup(
-            self, "NasaLogGroup",
+            self,
+            "NasaLogGroup",
             retention=logs.RetentionDays.ONE_WEEK,
             removal_policy=RemovalPolicy.DESTROY,
         )
@@ -24,7 +25,8 @@ class DepressionCherryAwsStack(Stack):
 
         # Define the lambda
         fn = _lambda.Function(
-            self, "Nasa",
+            self,
+            "Nasa",
             function_name=f"Nasa-{env_suffix}",
             runtime=_lambda.Runtime.PYTHON_3_13,
             handler="nasa.lambda_handler",
@@ -48,26 +50,30 @@ class DepressionCherryAwsStack(Stack):
         # Create SSM parameters
         for name in ["nasa-api-key", "email-from", "email-to"]:
             ssm.StringParameter.from_secure_string_parameter_attributes(
-                self, f"Param{name.title().replace('-', '')}",
-                parameter_name=f"{prefix}/{name}"
+                self, f"Param{name.title().replace('-', '')}", parameter_name=f"{prefix}/{name}"
             ).grant_read(fn)
 
         # Only run scheduler on prod stack
+        # Disabled scheduler until I have the time to make
+        # the required updates
         if env_suffix == "prod":
+            scheduler_principal = iam.ServicePrincipal("scheduler.amazonaws.com")
             scheduler_role = iam.Role(
-                self, "SchedulerInvokeRole",
-                assumed_by=iam.ServicePrincipal("scheduler.amazonaws.com")
+                self,
+                "SchedulerInvokeRole",
+                assumed_by=scheduler_principal,  # pyright: ignore[reportArgumentType]
             )
             fn.grant_invoke(scheduler_role)
 
             # Define the scheduler
             scheduler.CfnSchedule(
-                self, "DailyTrigger",
-                schedule_expression="cron(0 7 * * ? *)",   # 7am
+                self,
+                "DailyTrigger",
+                schedule_expression="cron(0 7 * * ? *)",  # 7am
                 schedule_expression_timezone="Europe/London",
                 flexible_time_window={"mode": "OFF"},
+                state="DISABLED",
                 target=scheduler.CfnSchedule.TargetProperty(
-                    arn=fn.function_arn,
-                    role_arn=scheduler_role.role_arn
-                )
+                    arn=fn.function_arn, role_arn=scheduler_role.role_arn
+                ),
             )
