@@ -19,6 +19,7 @@ from errors import raise_error
 PREFIX = os.environ.get("PARAM_PREFIX", "/depression-cherry/shared")
 PARAM_NAMES = ("nasa-api-key", "gmail-password", "email-from", "email-to")
 
+
 def configure_logging() -> None:
     """Configure logging for both Lambda and local execution."""
 
@@ -34,8 +35,9 @@ def configure_logging() -> None:
         logging.basicConfig(
             level=logging.INFO,
             format="%(asctime)s [%(levelname)s] %(message)s",
-            handlers=[logging.StreamHandler()]
+            handlers=[logging.StreamHandler()],
         )
+
 
 @lru_cache(maxsize=1)
 def get_params() -> dict[str, str]:
@@ -57,8 +59,7 @@ def get_params() -> dict[str, str]:
     # Queries AWS Parameter Store for parameters
     try:
         response = ssm.get_parameters(
-            Names=[f"{PREFIX}/{name}" for name in PARAM_NAMES],
-            WithDecryption=True
+            Names=[f"{PREFIX}/{name}" for name in PARAM_NAMES], WithDecryption=True
         )
     except ClientError as exc:
         raise_error(RuntimeError, f"Could not read SSM parameters under {PREFIX}: {exc}")
@@ -69,10 +70,7 @@ def get_params() -> dict[str, str]:
         raise_error(ValueError, error_msg)
 
     # Put the parameters into a variable
-    params = {
-        p["Name"].split("/")[-1]: p["Value"]
-        for p in response["Parameters"]
-    }
+    params = {p["Name"].split("/")[-1]: p["Value"] for p in response["Parameters"]}
 
     logging.info("All parameters have been retrieved")
 

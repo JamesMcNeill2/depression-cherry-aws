@@ -31,6 +31,7 @@ CID = "nasa_image"
 LINK_STYLE = f"color:{THEME['link']}; text-decoration:none;"
 MAX_ATTACHMENT_BYTES = 18 * 1024 * 1024
 
+
 def build_media_html(
     img_bytes: bytes | None,
     subtype: str | None,
@@ -77,11 +78,11 @@ def build_media_html(
     if copyright_holder:
         credit_style = f"font-family:{THEME['sans']}; font-size:12px; color:{THEME['muted']};"
         media_html += (
-            f'<p style="margin:8px 0 0 0; {credit_style}">'
-            f'{html.escape(copyright_holder)}</p>'
+            f'<p style="margin:8px 0 0 0; {credit_style}">{html.escape(copyright_holder)}</p>'
         )
 
     return media_html
+
 
 def render_html_body(
     safe_title: str,
@@ -105,28 +106,28 @@ def render_html_body(
 
     html_body = f"""\
     <html>
-    <body style="margin:0; padding:0; background-color:{THEME['bg']};">
+    <body style="margin:0; padding:0; background-color:{THEME["bg"]};">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-            style="background-color:{THEME['bg']}; padding:24px 12px;">
+            style="background-color:{THEME["bg"]}; padding:24px 12px;">
         <tr>
             <td align="center">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-                    style="max-width:600px; background-color:{THEME['card']}; border-radius:8px;
-                    overflow:hidden; border:1px solid {THEME['border']};">
+                    style="max-width:600px; background-color:{THEME["card"]}; border-radius:8px;
+                    overflow:hidden; border:1px solid {THEME["border"]};">
                 <tr>
                 <td style="padding:28px 28px 8px 28px;">
-                    <p style="margin:0 0 6px 0; font-family:{THEME['sans']};
+                    <p style="margin:0 0 6px 0; font-family:{THEME["sans"]};
                             font-size:12px; letter-spacing:1.5px; text-transform:uppercase;
-                            color:{THEME['muted']};">
+                            color:{THEME["muted"]};">
                     Astronomy Picture of the Day
                     </p>
-                    <h1 style="margin:0 0 4px 0; font-family:{THEME['serif']};
-                            font-size:26px; line-height:1.25; color:{THEME['heading']};
+                    <h1 style="margin:0 0 4px 0; font-family:{THEME["serif"]};
+                            font-size:26px; line-height:1.25; color:{THEME["heading"]};
                             font-weight:normal;">
                     {safe_title}
                     </h1>
-                    <p style="margin:0; font-family:{THEME['sans']};
-                            font-size:13px; color:{THEME['muted']};">
+                    <p style="margin:0; font-family:{THEME["sans"]};
+                            font-size:13px; color:{THEME["muted"]};">
                     {formatted_date}
                     </p>
                 </td>
@@ -138,11 +139,11 @@ def render_html_body(
                 </tr>
                 <tr>
                 <td style="padding:0 28px 28px 28px;">
-                    <p style="margin:0; font-family:{THEME['serif']};
-                            font-size:16px; line-height:1.65; color:{THEME['body_text']};">
+                    <p style="margin:0; font-family:{THEME["serif"]};
+                            font-size:16px; line-height:1.65; color:{THEME["body_text"]};">
                     {html.escape(explanation)}
                     </p>
-                    <p style="margin:24px 0 0 0; font-family:{THEME['sans']};
+                    <p style="margin:24px 0 0 0; font-family:{THEME["sans"]};
                             font-size:13px;">
                     <a href="{safe_url}" style="{LINK_STYLE}">
                         View on NASA &rarr;
@@ -158,6 +159,7 @@ def render_html_body(
     </html>
     """
     return html_body
+
 
 def create_msg(
     nasa_data: dict[str, Any],
@@ -207,9 +209,7 @@ def create_msg(
     media_html = build_media_html(
         img_bytes, subtype, safe_title, is_video, safe_url, copyright_holder
     )
-    html_body = render_html_body(
-        safe_title, formatted_date, media_html, explanation, safe_url
-    )
+    html_body = render_html_body(safe_title, formatted_date, media_html, explanation, safe_url)
     msg.add_alternative(html_body, subtype="html")
 
     # Add the HTML body and attach the image inline using its CID
@@ -218,6 +218,7 @@ def create_msg(
         html_part.add_related(img_bytes, maintype="image", subtype=subtype, cid=f"<{CID}>")
 
     return msg
+
 
 def send_email(msg: EmailMessage, params: dict[str, str]) -> None:
     """Send an already composed email through the configured Gmail SMTP server.
