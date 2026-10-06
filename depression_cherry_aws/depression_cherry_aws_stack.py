@@ -1,9 +1,7 @@
 from aws_cdk import Duration, RemovalPolicy, Stack
-
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as _lambda
 from aws_cdk import aws_logs as logs
-
 from aws_cdk import aws_scheduler as scheduler
 from aws_cdk import aws_ssm as ssm
 from constructs import Construct
