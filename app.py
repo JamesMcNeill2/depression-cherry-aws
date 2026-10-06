@@ -9,9 +9,10 @@ from depression_cherry_aws.depression_cherry_aws_stack import DepressionCherryAw
 
 app = cdk.App()
 
-env=cdk.Environment(
-    account=os.getenv("CDK_DEFAULT_ACCOUNT"),
-    region=os.getenv("CDK_DEFAULT_REGION", "eu-west-2"))
+env = cdk.Environment(
+    account=os.getenv("CDK_DEFAULT_ACCOUNT"), region=os.getenv("CDK_DEFAULT_REGION", "eu-west-2")
+)
+
 
 def get_env_suffix(branch: str) -> str:
     if branch == "main":
@@ -30,17 +31,14 @@ def get_env_suffix(branch: str) -> str:
     digest = hashlib.sha256(branch.encode()).hexdigest()[:6]
     return f"{suffix[:33]}-{digest}"
 
+
 branch_name = os.getenv("BRANCH_NAME", "dev")
 env_suffix = get_env_suffix(branch_name)
 
 env_name = env_suffix.replace("-", " ").title().replace(" ", "")
 
 DepressionCherryAwsStack(
-    app,
-    f"DepressionCherryAwsStack-{env_suffix}",
-    env_name=env_name,
-    env_suffix=env_suffix,
-    env=env
-    )
+    app, f"DepressionCherryAwsStack-{env_suffix}", env_name=env_name, env_suffix=env_suffix, env=env
+)
 
 app.synth()

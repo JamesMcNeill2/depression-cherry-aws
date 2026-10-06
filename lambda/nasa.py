@@ -8,6 +8,7 @@ from mailer import create_msg, send_email
 # APOD = Astronomy Picture of the Day
 APOD_URL = "https://api.nasa.gov/planetary/apod"
 
+
 def lambda_handler(event, context):
 
     # Sets up the logger and defines parameters
@@ -25,6 +26,7 @@ def lambda_handler(event, context):
     send_email(msg, params)
 
     return {"status": "sent", "date": nasa_data.get("date")}
+
 
 if __name__ == "__main__":
     lambda_handler({}, {})
