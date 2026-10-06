@@ -39,7 +39,7 @@ class DepressionCherryAwsStack(Stack):
                 self, f"Param{name.title().replace('-', '')}", parameter_name=f"{prefix}/{name}"
             ).grant_read(fn)
 
-        # Removed scheduler until I have the time to make
+        # Disabled scheduler until I have the time to make
         # the required updates
         if env_suffix == "prod":
             scheduler_principal = iam.ServicePrincipal("scheduler.amazonaws.com")
